@@ -5,6 +5,7 @@ import SummaryCards from "@/components/SummaryCards";
 import ForexStrip from "@/components/ForexStrip";
 import YieldCurve from "@/components/YieldCurve";
 import NewsPanel from "@/components/NewsPanel";
+import LRMPanel from "@/components/LRMPanel";
 import Header from "@/components/Header";
 
 const TABS = ["Overview", "Tracker", "Curves", "Forex", "Watchlist"];
@@ -66,7 +67,7 @@ export default function Home() {
           <ForexStrip forex={forex} />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <YieldCurve treasury={treasury} />
-            <NewsPanel news={news} />
+            <LRMPanel />
           </div>
           <TrackerTable quotes={quotes} />
         </div>
