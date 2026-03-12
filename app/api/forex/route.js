@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchForexQuotes } from "@/lib/fmp";
+import { fetchForexQuotes, fetchStockPriceChange } from "@/lib/fmp";
 import { FOREX_CONFIG } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
@@ -14,18 +14,30 @@ export async function GET() {
   }
   try {
     const tickers = FOREX_CONFIG.map(f => f.ticker);
-    const data = await fetchForexQuotes(tickers);
+    const [data, priceChanges] = await Promise.all([
+      fetchForexQuotes(tickers),
+      fetchStockPriceChange(tickers),
+    ]);
+
+    const changeMap = {};
+    for (const pc of priceChanges) {
+      changeMap[pc.symbol] = pc;
+    }
 
     const result = FOREX_CONFIG.map(fc => {
       const q = data.find(d => d.symbol === fc.ticker) || {};
+      const pc = changeMap[fc.ticker] || {};
       return {
         ...fc,
-        price: q.price || null,
-        change: q.changePercentage || null,
-        dayHigh: q.dayHigh || null,
-        dayLow: q.dayLow || null,
-        yearHigh: q.yearHigh || null,
-        yearLow: q.yearLow || null,
+        price: q.price ?? null,
+        change: q.changePercentage ?? null,
+        yearHigh: q.yearHigh ?? null,
+        d1: pc["1D"] ?? q.changePercentage ?? null,
+        w1: pc["5D"] ?? null,
+        m1: pc["1M"] ?? null,
+        ytd: pc["ytd"] ?? null,
+        y1: pc["1Y"] ?? null,
+        y3: pc["3Y"] ?? null,
       };
     });
 
