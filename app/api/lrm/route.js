@@ -7,10 +7,10 @@ const SHEET_CSV_URL =
   "https://docs.google.com/spreadsheets/d/19C_ncF_8YYpHXVg8FtGaT9HtTO3e3OeWCvmv9y0L8Kg/gviz/tq?tqx=out:csv&sheet=LRM";
 
 const BUCKETS = [
-  { label: "30d", min: 1, max: 35 },
-  { label: "90d", min: 80, max: 100 },
-  { label: "180d", min: 160, max: 200 },
-  { label: "360d", min: 340, max: 370 },
+  { label: "30d", min: 1, max: 45 },
+  { label: "90d", min: 60, max: 120 },
+  { label: "180d", min: 150, max: 210 },
+  { label: "360d", min: 330, max: 400 },
 ];
 
 const EMPTY_DATA = { curve: null, rows: [], updatedAt: null };
@@ -38,32 +38,27 @@ function parseSheetCSV(text) {
   const lines = text.split("\n").filter((l) => l.trim());
   if (lines.length < 2) return { curve: null, rows: [] };
 
-  const headers = parseCSVLine(lines[0]).map((h) => h.replace(/"/g, "").trim().toUpperCase());
-  console.log("LRM CSV headers:", headers);
-
-  const colTipo = headers.findIndex((h) => h.includes("TIPO"));
-  const colFecha = headers.findIndex((h) => h.includes("FECHA") && h.includes("LIC"));
-  const colPlazo = headers.findIndex((h) => h.includes("PLAZO"));
-  const colTasa = headers.findIndex((h) => h.includes("TASA") && h.includes("CORTE"));
-  const colMonto = headers.findIndex((h) => h.includes("MONTO") && h.includes("ACEP"));
-  console.log("LRM column indices - tipo:", colTipo, "fecha:", colFecha, "plazo:", colPlazo, "tasa:", colTasa, "monto:", colMonto);
+  // Fixed column indices: A=0 TIPO, D=3 FECHA LIC, G=6 PLAZO, H=7 TASA CORTE
+  const COL_TIPO = 0;
+  const COL_FECHA = 3;
+  const COL_PLAZO = 6;
+  const COL_TASA = 7;
 
   const rows = [];
   for (let i = 1; i < lines.length; i++) {
     const cells = parseCSVLine(lines[i]);
     if (!cells.length) continue;
 
-    const tipo = (cells[colTipo >= 0 ? colTipo : 0] || "").replace(/"/g, "").trim().toUpperCase();
-    if (!tipo.includes("LRMMN") || tipo.includes("LRMMNNC")) continue;
+    const tipo = (cells[COL_TIPO] || "").replace(/"/g, "").trim().toUpperCase();
+    if (tipo !== "LRMMN") continue;
 
-    const plazo = parseFloat((cells[colPlazo >= 0 ? colPlazo : 2] || "").replace(/"/g, ""));
-    const tasa = parseFloat((cells[colTasa >= 0 ? colTasa : 3] || "").replace(/"/g, ""));
+    const plazo = parseFloat((cells[COL_PLAZO] || "").replace(/"/g, ""));
+    const tasa = parseFloat((cells[COL_TASA] || "").replace(/"/g, ""));
     if (isNaN(plazo) || isNaN(tasa)) continue;
 
-    const fecha = (cells[colFecha >= 0 ? colFecha : 1] || "").replace(/"/g, "").trim();
-    const monto = parseFloat((cells[colMonto >= 0 ? colMonto : 4] || "").replace(/"/g, "")) || 0;
+    const fecha = (cells[COL_FECHA] || "").replace(/"/g, "").trim();
 
-    rows.push({ tipo, fecha, plazo, tasa, monto });
+    rows.push({ tipo, fecha, plazo, tasa });
   }
 
   rows.sort((a, b) => (b.fecha > a.fecha ? 1 : -1));
