@@ -93,13 +93,30 @@ export default function YieldCurve({ treasury, full }) {
           </Area>
         </AreaChart>
       </ResponsiveContainer>
-      {spread10y2y !== null && (
-        <div className="mt-3 text-center">
-          <span className="text-[11px] font-bold text-white tracking-wide">
-            10Y – 2Y SPREAD: {spread10y2y}%
-          </span>
-        </div>
-      )}
+      {spread10y2y !== null && (() => {
+        const s = parseFloat(spread10y2y);
+        let label, color;
+        if (s > 2.0)      { label = "Steep"; color = "#228B22"; }
+        else if (s >= 0.5) { label = "Normal"; color = "#3CB371"; }
+        else if (s >= 0)   { label = "Flat"; color = "#EAB308"; }
+        else               { label = "Inverted"; color = "#DC2626"; }
+        return (
+          <div className="mt-3">
+            <div className="text-center">
+              <span className="text-[11px] font-bold text-white tracking-wide">
+                10Y – 2Y SPREAD: {spread10y2y}%
+              </span>
+              <span className="text-[11px] ml-2" style={{ color }}>
+                · {label} (LT avg: 0.85%)
+              </span>
+            </div>
+            <div className="mt-2 px-2 space-y-1">
+              <p className="text-[10px] text-white">• Curva invertida: inversores esperan menor crecimiento y tasas más bajas, anticipando una desaceleración económica.</p>
+              <p className="text-[10px] text-white">• Sentimiento: prefieren asegurar rendimientos largos más bajos ante expectativa de recesión.</p>
+            </div>
+          </div>
+        );
+      })()}
       {full && (
         <div className="flex gap-2 mt-4 flex-wrap">
           {data.map((d, i) => (
