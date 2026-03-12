@@ -11,7 +11,7 @@ export async function GET() {
   }
   try {
     const res = await fetch(
-      `https://financialmodelingprep.com/api/v3/stock_news?limit=8&apikey=${API_KEY}`
+      `https://financialmodelingprep.com/stable/news/stock?limit=8&apikey=${API_KEY}`
     );
     if (!res.ok) throw new Error("News fetch failed");
     const data = await res.json();

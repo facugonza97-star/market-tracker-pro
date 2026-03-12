@@ -13,7 +13,7 @@ export async function GET() {
   try {
     const tickers = FOREX_CONFIG.map(f => f.ticker).join(",");
     const res = await fetch(
-      `https://financialmodelingprep.com/api/v3/quote/${tickers}?apikey=${API_KEY}`
+      `https://financialmodelingprep.com/stable/quote?symbol=${tickers}&apikey=${API_KEY}`
     );
     if (!res.ok) throw new Error("Forex fetch failed");
     const data = await res.json();
@@ -23,7 +23,7 @@ export async function GET() {
       return {
         ...fc,
         price: q.price || null,
-        change: q.changesPercentage || null,
+        change: q.changePercentage || null,
         dayHigh: q.dayHigh || null,
         dayLow: q.dayLow || null,
         yearHigh: q.yearHigh || null,

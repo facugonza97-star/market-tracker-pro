@@ -53,9 +53,9 @@ export async function GET() {
           yearHigh: q.yearHigh || null,
           yearLow: q.yearLow || null,
           change: q.change || null,
-          changesPercentage: q.changesPercentage || null,
+          changesPercentage: q.changePercentage || null,
           // Price changes from FMP
-          d1: pc["1D"] || q.changesPercentage || null,
+          d1: pc["1D"] || q.changePercentage || null,
           w1: pc["5D"] || null,
           m1: pc["1M"] || null,
           ytd: pc["ytd"] || null,
