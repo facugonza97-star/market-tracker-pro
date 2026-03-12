@@ -1,9 +1,25 @@
 import { NextResponse } from "next/server";
+import https from "https";
 
 export const dynamic = "force-dynamic";
 
 let cache = { data: null, timestamp: 0 };
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+function fetchPDFBuffer(url) {
+  return new Promise((resolve, reject) => {
+    https.get(url, { rejectUnauthorized: false }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        return fetchPDFBuffer(res.headers.location).then(resolve).catch(reject);
+      }
+      if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
+      const chunks = [];
+      res.on("data", (chunk) => chunks.push(chunk));
+      res.on("end", () => resolve(Buffer.concat(chunks)));
+      res.on("error", reject);
+    }).on("error", reject);
+  });
+}
 
 function parseCalendarText(text) {
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -45,14 +61,9 @@ export async function GET() {
   try {
     const { PDFParse } = await import("pdf-parse");
 
-    const res = await fetch(
-      "https://www.bcu.gub.uy/Politica-Economica-y-Mercados/Calendario%20Deuda/calendario_deuda.pdf",
-      { headers: { "User-Agent": "Mozilla/5.0" } }
+    const buffer = await fetchPDFBuffer(
+      "https://www.bcu.gub.uy/Politica-Economica-y-Mercados/Calendario%20Deuda/calendario_deuda.pdf"
     );
-
-    if (!res.ok) throw new Error(`BCU PDF fetch failed: ${res.status}`);
-
-    const buffer = await res.arrayBuffer();
     const uint8 = new Uint8Array(buffer);
     const parser = new PDFParse(uint8);
     const result = await parser.getText();
