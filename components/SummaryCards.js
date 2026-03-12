@@ -34,7 +34,7 @@ export default function SummaryCards({ quotes, treasury }) {
   const gold = findTicker("GCUSD");
   cards.push({ label: "Gold", val: gold?.price, chg: gold?.d1, fmt: "price" });
 
-  const wti = findTicker("CL=F");
+  const wti = findTicker("USO");
   cards.push({ label: "WTI", val: wti?.price, chg: wti?.d1, fmt: "decimal" });
 
   const format = (v, fmt) => {
