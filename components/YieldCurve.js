@@ -45,7 +45,7 @@ export default function YieldCurve({ treasury, full }) {
   return (
     <div className="bg-card border border-border rounded-xl p-4">
       <div className="flex justify-between items-baseline mb-3">
-        <span className="text-xs font-semibold text-white">US Treasury Yield Curve</span>
+        <span className="text-xs font-semibold text-white">🇺🇸 US Treasury Yield Curve</span>
         <span className="text-[10px] text-text-dim">All maturities</span>
       </div>
       <ResponsiveContainer width="100%" height={height}>

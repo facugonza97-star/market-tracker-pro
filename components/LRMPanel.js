@@ -33,7 +33,7 @@ export default function LRMPanel() {
   return (
     <div className="bg-card border border-border rounded-xl p-4">
       <div className="flex justify-between items-center mb-3">
-        <span className="text-xs font-semibold text-white">Letras de Regulación Monetaria (LRM)</span>
+        <span className="text-xs font-semibold text-white">🇺🇾 Letras de Regulación Monetaria (LRM)</span>
       </div>
 
       {chartData.length > 0 ? (
@@ -107,7 +107,6 @@ export default function LRMPanel() {
                 <th className="px-2 py-1.5 text-left text-[10px] font-bold text-white uppercase">Fecha Lic.</th>
                 <th className="px-2 py-1.5 text-left text-[10px] font-bold text-white uppercase">Fecha Venc.</th>
                 <th className="px-2 py-1.5 text-center text-[10px] font-bold text-white uppercase">Plazo</th>
-                <th className="px-2 py-1.5 text-right text-[10px] font-bold text-white uppercase">Moneda</th>
               </tr>
             </thead>
             <tbody>
@@ -116,7 +115,6 @@ export default function LRMPanel() {
                   <td className="px-2 py-1.5 text-[11px] text-white font-mono">{item.fechaLicitacion}</td>
                   <td className="px-2 py-1.5 text-[11px] text-text-primary font-mono">{item.fechaVencimiento}</td>
                   <td className="px-2 py-1.5 text-center text-[11px] text-text-dim font-mono">{item.plazo}d</td>
-                  <td className="px-2 py-1.5 text-right text-[11px] text-white">{item.moneda}</td>
                 </tr>
               ))}
             </tbody>
