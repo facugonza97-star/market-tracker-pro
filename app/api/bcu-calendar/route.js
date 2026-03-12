@@ -63,31 +63,38 @@ export async function GET() {
   }
 
   try {
-    const { PDFParse } = await import("pdf-parse");
-
-    const buffer = await fetchPDFBuffer(
-      "https://www.bcu.gub.uy/Politica-Economica-y-Mercados/Calendario%20Deuda/calendario_deuda.pdf"
-    );
-    const uint8 = new Uint8Array(buffer);
-    const parser = new PDFParse(uint8);
-    const result = await parser.getText();
-    const text = result.text || "";
+    let text = "";
+    try {
+      const { PDFParse } = await import("pdf-parse");
+      const buffer = await fetchPDFBuffer(
+        "https://www.bcu.gub.uy/Politica-Economica-y-Mercados/Calendario%20Deuda/calendario_deuda.pdf"
+      );
+      console.log("BCU PDF downloaded:", buffer.length, "bytes");
+      const uint8 = new Uint8Array(buffer);
+      const parser = new PDFParse(uint8);
+      const result = await parser.getText();
+      text = result.text || "";
+    } catch (pdfError) {
+      console.error("BCU PDF parse failed:", pdfError.message);
+      // Return empty if PDF fetch/parse fails
+      cache = { data: [], timestamp: now };
+      return NextResponse.json([]);
+    }
 
     const entries = parseCalendarText(text);
+    console.log("BCU calendar parsed entries:", entries.length);
 
-    // Filter only future dates
-    const today = new Date().toISOString().split("T")[0];
-    const filtered = entries.map((e) => {
+    // Sort by date, show all (including past week for reference)
+    const sorted = entries.map((e) => {
       const [d, m, y] = e.fecha.split("/");
       return { ...e, sortDate: `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}` };
-    }).filter((e) => e.sortDate >= today)
-      .sort((a, b) => a.sortDate.localeCompare(b.sortDate));
+    }).sort((a, b) => a.sortDate.localeCompare(b.sortDate));
 
-    cache = { data: filtered, timestamp: now };
-    return NextResponse.json(filtered);
+    cache = { data: sorted, timestamp: now };
+    return NextResponse.json(sorted);
   } catch (error) {
-    console.error("BCU calendar error:", error);
+    console.error("BCU calendar error:", error.message, error.stack);
     if (cache.data) return NextResponse.json(cache.data);
-    return NextResponse.json({ error: "Failed to fetch BCU calendar" }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { put, list } from "@vercel/blob";
 import * as XLSX from "xlsx";
 
+export const runtime = "nodejs";
+
 const BLOB_NAME = "lrm-data.json";
 const EMPTY_DATA = { curve: null, rows: [], updatedAt: null };
 
@@ -87,21 +89,30 @@ function parseExcel(buffer) {
 
 async function readFromBlob() {
   try {
-    const { blobs } = await list({ prefix: BLOB_NAME });
-    if (blobs.length === 0) return EMPTY_DATA;
-    const res = await fetch(blobs[0].url);
-    if (!res.ok) return EMPTY_DATA;
+    const { blobs } = await list();
+    const match = blobs.find((b) => b.pathname === BLOB_NAME);
+    if (!match) {
+      console.log("LRM blob not found, returning empty data");
+      return EMPTY_DATA;
+    }
+    const res = await fetch(match.url);
+    if (!res.ok) {
+      console.error("LRM blob fetch failed:", res.status);
+      return EMPTY_DATA;
+    }
     return await res.json();
-  } catch {
+  } catch (error) {
+    console.error("LRM readFromBlob error:", error.message);
     return EMPTY_DATA;
   }
 }
 
 async function writeToBlob(data) {
-  await put(BLOB_NAME, JSON.stringify(data), {
+  const blob = await put(BLOB_NAME, JSON.stringify(data), {
     access: "public",
     addRandomSuffix: false,
   });
+  console.log("LRM data saved to blob:", blob.url);
 }
 
 export async function POST(request) {
