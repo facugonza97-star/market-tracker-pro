@@ -18,7 +18,7 @@ const MATURITIES = [
 function CustomLabel({ x, y, value }) {
   if (value === null || value === undefined) return null;
   return (
-    <text x={x} y={y - 10} fill="#ffffff" fontSize={9} fontWeight="bold" textAnchor="middle">
+    <text x={x} y={y - 12} fill="#ffffff" fontSize={13} fontWeight={600} textAnchor="middle">
       {value.toFixed(2)}%
     </text>
   );
@@ -59,17 +59,17 @@ export default function YieldCurve({ treasury, full }) {
           <CartesianGrid strokeDasharray="3 3" stroke="#1C2536" />
           <XAxis
             dataKey="mat"
-            tick={{ fill: "#ffffff", fontSize: 10, fontWeight: "bold" }}
+            tick={{ fill: "#CBD5E0", fontSize: 13 }}
             axisLine={false}
             tickLine={false}
           />
           <YAxis
             domain={[minRate, maxRate]}
-            tick={{ fill: "#ffffff", fontSize: 10, fontWeight: "bold" }}
+            tick={{ fill: "#CBD5E0", fontSize: 12 }}
             axisLine={false}
             tickLine={false}
             tickFormatter={(v) => v.toFixed(1) + "%"}
-            width={45}
+            width={50}
           />
           <Tooltip
             contentStyle={{
