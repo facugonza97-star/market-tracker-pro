@@ -55,17 +55,17 @@ export default function TrackerTable({ quotes }) {
     <div className="bg-card border border-border rounded-xl overflow-hidden mt-4">
       <table className="w-full">
         <thead>
-          <tr className="bg-surface">
-            <th className="px-3 py-2.5 text-left text-[9px] font-semibold text-text-dim uppercase tracking-widest">Name</th>
-            <th className="px-2 py-2.5 text-left text-[9px] font-semibold text-text-dim uppercase tracking-widest">Ticker</th>
-            <th className="px-2 py-2.5 text-center text-[9px] font-semibold text-text-dim uppercase tracking-widest">Price</th>
-            <th className="px-2 py-2.5 text-center text-[9px] font-semibold text-text-dim uppercase tracking-widest">52W Hi</th>
-            <th className="px-2 py-2.5 text-center text-[9px] font-semibold text-text-dim uppercase tracking-widest">% 52WH</th>
+          <tr style={{ backgroundColor: "#0d0d1a" }}>
+            <th className="px-3 py-3 text-left text-[11px] font-bold text-white uppercase tracking-wider">Name</th>
+            <th className="px-2 py-3 text-left text-[11px] font-bold text-white uppercase tracking-wider">Ticker</th>
+            <th className="px-2 py-3 text-center text-[11px] font-bold text-white uppercase tracking-wider">Price</th>
+            <th className="px-2 py-3 text-center text-[11px] font-bold text-white uppercase tracking-wider">52W Hi</th>
+            <th className="px-2 py-3 text-center text-[11px] font-bold text-white uppercase tracking-wider">% 52WH</th>
             {COLS.map((c) => (
               <th
                 key={c.key}
                 onClick={() => handleSort(c.key)}
-                className="px-1.5 py-2.5 text-center text-[9px] font-semibold text-text-dim uppercase tracking-widest cursor-pointer hover:text-text-sec select-none"
+                className="px-1.5 py-3 text-center text-[11px] font-bold text-white uppercase tracking-wider cursor-pointer hover:text-blue-300 select-none"
               >
                 {c.label} {sortCol === c.key && (sortDir === "desc" ? "↓" : "↑")}
               </th>
