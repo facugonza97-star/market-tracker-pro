@@ -1,10 +1,8 @@
 "use client";
 
-export default function SummaryCards({ quotes, forex }) {
+export default function SummaryCards({ quotes, treasury }) {
   if (!quotes?.sections) return null;
 
-  // Extract key data points
-  const cards = [];
   const findTicker = (ticker) => {
     for (const items of Object.values(quotes.sections)) {
       const found = items.find((i) => i.ticker === ticker);
@@ -13,36 +11,33 @@ export default function SummaryCards({ quotes, forex }) {
     return null;
   };
 
+  const cards = [];
+
   const sp = findTicker("^GSPC");
-  if (sp) cards.push({ label: "S&P 500", val: sp.price, chg: sp.ytd, fmt: "price" });
+  cards.push({ label: "S&P 500", val: sp?.price, chg: sp?.d1, fmt: "price" });
 
   const nq = findTicker("^IXIC");
-  if (nq) cards.push({ label: "NASDAQ", val: nq.price, chg: nq.ytd, fmt: "price" });
+  cards.push({ label: "NASDAQ", val: nq?.price, chg: nq?.d1, fmt: "price" });
+
+  const y10 = treasury?.year10 ? parseFloat(treasury.year10) : null;
+  cards.push({ label: "US 10Y Yield", val: y10, chg: null, fmt: "yield" });
 
   const vix = findTicker("^VIX");
-  if (vix) cards.push({ label: "VIX", val: vix.price, chg: vix.d1, fmt: "decimal" });
+  cards.push({ label: "VIX", val: vix?.price, chg: vix?.d1, fmt: "decimal" });
 
   const btc = findTicker("IBIT");
-  if (btc) cards.push({ label: "Bitcoin", val: btc.price, chg: btc.ytd, fmt: "price" });
+  cards.push({ label: "BTC", val: btc?.price, chg: btc?.d1, fmt: "price" });
 
   const gold = findTicker("GLD");
-  if (gold) cards.push({ label: "Gold", val: gold.price, chg: gold.ytd, fmt: "price" });
+  cards.push({ label: "Gold", val: gold?.price, chg: gold?.d1, fmt: "price" });
 
   const oil = findTicker("USO");
-  if (oil) cards.push({ label: "WTI", val: oil.price, chg: oil.ytd, fmt: "price" });
-
-  // Forex
-  if (forex && Array.isArray(forex)) {
-    const uyu = forex.find((f) => f.name === "USD/UYU");
-    if (uyu) cards.push({ label: "USD/UYU", val: uyu.price, chg: uyu.change, fmt: "fx" });
-    const dxy = forex.find((f) => f.name === "DXY");
-    if (dxy) cards.push({ label: "DXY", val: dxy.price, chg: dxy.change, fmt: "decimal" });
-  }
+  cards.push({ label: "WTI", val: oil?.price, chg: oil?.d1, fmt: "price" });
 
   const format = (v, fmt) => {
-    if (!v) return "—";
+    if (v === null || v === undefined) return "—";
+    if (fmt === "yield") return v.toFixed(2) + "%";
     if (fmt === "price") return v >= 1000 ? v.toLocaleString("en", { maximumFractionDigits: 0 }) : v.toFixed(2);
-    if (fmt === "fx") return v.toFixed(2);
     return v.toFixed(2);
   };
 
