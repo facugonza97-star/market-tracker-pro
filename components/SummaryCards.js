@@ -1,15 +1,13 @@
 "use client";
 
-export default function SummaryCards({ quotes, treasury }) {
+export default function SummaryCards({ quotes, treasury, macro }) {
   if (!quotes?.sections) return null;
 
   const findTicker = (ticker) => {
-    // Check sections first
     for (const items of Object.values(quotes.sections)) {
       const found = items.find((i) => i.ticker === ticker);
       if (found) return found;
     }
-    // Check summaryQuotes
     if (quotes.summaryQuotes?.[ticker]) return quotes.summaryQuotes[ticker];
     return null;
   };
@@ -34,6 +32,16 @@ export default function SummaryCards({ quotes, treasury }) {
   const gold = findTicker("GCUSD");
   cards.push({ label: "Gold", val: gold?.price, chg: gold?.d1, fmt: "price" });
 
+  // Macro cards from Google Sheet
+  const ipcUY = macro?.["IPC Uruguay"];
+  if (ipcUY) {
+    cards.push({ label: "🇺🇾 IPC Uruguay", val: ipcUY.valor, chg: ipcUY.variacion, fmt: "yield", sub: ipcUY.periodo });
+  }
+
+  const ipcUS = macro?.["IPC USA"];
+  if (ipcUS) {
+    cards.push({ label: "🇺🇸 IPC USA", val: ipcUS.valor, chg: ipcUS.variacion, fmt: "yield", sub: ipcUS.periodo });
+  }
 
   const format = (v, fmt) => {
     if (v === null || v === undefined) return "—";
@@ -55,6 +63,9 @@ export default function SummaryCards({ quotes, treasury }) {
             <div className={`text-xs font-semibold mt-0.5 ${c.chg >= 0 ? "text-pos" : "text-neg"}`}>
               {c.chg >= 0 ? "+" : ""}{parseFloat(c.chg).toFixed(1)}%
             </div>
+          )}
+          {c.sub && (
+            <div className="text-[10px] text-text-sec mt-0.5">{c.sub}</div>
           )}
         </div>
       ))}

@@ -16,27 +16,31 @@ export default function Home() {
   const [treasury, setTreasury] = useState(null);
   const [news, setNews] = useState(null);
   const [forex, setForex] = useState(null);
+  const [macro, setMacro] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(null);
 
   const fetchAll = useCallback(async () => {
     try {
-      const [qRes, tRes, nRes, fRes] = await Promise.all([
+      const [qRes, tRes, nRes, fRes, mRes] = await Promise.all([
         fetch("/api/quotes"),
         fetch("/api/treasury"),
         fetch("/api/news"),
         fetch("/api/forex"),
+        fetch("/api/macro"),
       ]);
-      const [qData, tData, nData, fData] = await Promise.all([
+      const [qData, tData, nData, fData, mData] = await Promise.all([
         qRes.json(),
         tRes.json(),
         nRes.json(),
         fRes.json(),
+        mRes.json(),
       ]);
       setQuotes(qData);
       setTreasury(tData);
       setNews(nData);
       setForex(fData);
+      setMacro(mData);
       setLastUpdate(new Date());
       setLoading(false);
     } catch (e) {
@@ -63,7 +67,7 @@ export default function Home() {
 
       {!loading && tab === "Overview" && (
         <div className="px-8 py-6 space-y-6">
-          <SummaryCards quotes={quotes} treasury={treasury} />
+          <SummaryCards quotes={quotes} treasury={treasury} macro={macro} />
           <ForexStrip forex={forex} />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <YieldCurve treasury={treasury} />
