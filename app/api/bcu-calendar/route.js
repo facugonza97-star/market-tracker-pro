@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import https from "https";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// Needed for BCU's SSL certificate
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 let cache = { data: null, timestamp: 0 };
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour

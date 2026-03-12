@@ -20,7 +20,8 @@ export default function LRMPanel() {
     fetch("/api/lrm").then((r) => r.json()).then(setLrm).catch(() => {});
     fetch("/api/bcu-calendar").then((r) => r.json()).then((data) => {
       if (Array.isArray(data)) setCalendar(data);
-    }).catch(() => {});
+      else setCalendar([]);
+    }).catch(() => setCalendar([]));
   }, []);
 
   const handleUpload = async (e) => {
