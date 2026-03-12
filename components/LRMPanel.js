@@ -47,7 +47,7 @@ export default function LRMPanel() {
       {chartData.length > 0 ? (
         <>
           <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={chartData} margin={{ top: 20, right: 10, left: 0, bottom: 0 }}>
+            <AreaChart data={chartData} margin={{ top: 25, right: 15, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="lrmGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.15} />
@@ -79,7 +79,7 @@ export default function LRMPanel() {
                 dot={{ r: 4, fill: "#F59E0B", strokeWidth: 0 }}
                 activeDot={{ r: 6, fill: "#F59E0B", stroke: "#ffffff", strokeWidth: 2 }}
               >
-                <LabelList dataKey="rate" position="top" formatter={(v) => v.toFixed(2) + "%"} style={{ fontSize: 12, fill: "#FFFFFF", fontWeight: 600 }} />
+                <LabelList dataKey="rate" position="top" offset={10} formatter={(v) => v.toFixed(2) + "%"} style={{ fontSize: 11, fill: "#FFFFFF", fontWeight: 600 }} />
               </Area>
             </AreaChart>
           </ResponsiveContainer>

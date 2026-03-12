@@ -76,7 +76,7 @@ export default function ForexStrip({ forex, full }) {
     );
   }
 
-  const STRIP_TICKERS = ["USDUYU", "EURUSD", "USDBRL", "UUP"];
+  const STRIP_TICKERS = ["USDUYU", "EURUSD", "USDBRL", "DX=F"];
   const stripForex = forex.filter((f) => STRIP_TICKERS.includes(f.ticker));
 
   return (

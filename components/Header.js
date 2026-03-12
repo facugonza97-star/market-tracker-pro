@@ -11,7 +11,7 @@ export default function Header({ tab, setTab, tabs, lastUpdate }) {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-3.5 py-3 text-xs font-medium transition-colors border-b-2 ${
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
                 tab === t
                   ? "text-white border-accent font-semibold"
                   : "text-text-sec border-transparent hover:text-white"

@@ -57,7 +57,7 @@ export default function YieldCurve({ treasury, full }) {
         <span className="text-xs text-text-dim">All maturities</span>
       </div>
       <ResponsiveContainer width="100%" height={height}>
-        <AreaChart data={data} margin={{ top: 20, right: 10, left: 0, bottom: 0 }}>
+        <AreaChart data={data} margin={{ top: 25, right: 15, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="yieldGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#5B8DEF" stopOpacity={0.15} />
@@ -89,7 +89,7 @@ export default function YieldCurve({ treasury, full }) {
             dot={{ r: 4, fill: "#5B8DEF", strokeWidth: 0 }}
             activeDot={{ r: 6, fill: "#5B8DEF", stroke: "#ffffff", strokeWidth: 2 }}
           >
-            <LabelList dataKey="rate" position="top" formatter={(v) => v.toFixed(2) + "%"} style={{ fontSize: 12, fill: "#FFFFFF", fontWeight: 600 }} />
+            <LabelList dataKey="rate" position="top" offset={10} formatter={(v) => v.toFixed(2) + "%"} style={{ fontSize: 11, fill: "#FFFFFF", fontWeight: 600 }} />
           </Area>
         </AreaChart>
       </ResponsiveContainer>
