@@ -10,7 +10,7 @@ function parseCSV(text) {
   const lines = text.split("\n").filter((l) => l.trim());
   if (lines.length < 2) return [];
 
-  const headers = lines[0].split(",").map((h) => h.replace(/"/g, "").trim());
+  const headers = parseCSVLine(lines[0]).map((h) => h.replace(/"/g, "").trim());
 
   const colFechaLic = headers.findIndex((h) => h.toUpperCase().includes("FECHA") && h.toUpperCase().includes("LIC"));
   const colFechaVenc = headers.findIndex((h) => h.toUpperCase().includes("FECHA") && h.toUpperCase().includes("VENC"));

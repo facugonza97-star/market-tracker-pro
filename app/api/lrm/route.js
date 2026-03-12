@@ -7,7 +7,7 @@ const SHEET_CSV_URL =
   "https://docs.google.com/spreadsheets/d/19C_ncF_8YYpHXVg8FtGaT9HtTO3e3OeWCvmv9y0L8Kg/gviz/tq?tqx=out:csv&sheet=LRM";
 
 const BUCKETS = [
-  { label: "30d", min: 0, max: 35 },
+  { label: "30d", min: 1, max: 35 },
   { label: "90d", min: 80, max: 100 },
   { label: "180d", min: 160, max: 200 },
   { label: "360d", min: 340, max: 370 },
@@ -38,13 +38,15 @@ function parseSheetCSV(text) {
   const lines = text.split("\n").filter((l) => l.trim());
   if (lines.length < 2) return { curve: null, rows: [] };
 
-  const headers = lines[0].split(",").map((h) => h.replace(/"/g, "").trim().toUpperCase());
+  const headers = parseCSVLine(lines[0]).map((h) => h.replace(/"/g, "").trim().toUpperCase());
+  console.log("LRM CSV headers:", headers);
 
   const colTipo = headers.findIndex((h) => h.includes("TIPO"));
   const colFecha = headers.findIndex((h) => h.includes("FECHA") && h.includes("LIC"));
   const colPlazo = headers.findIndex((h) => h.includes("PLAZO"));
   const colTasa = headers.findIndex((h) => h.includes("TASA") && h.includes("CORTE"));
   const colMonto = headers.findIndex((h) => h.includes("MONTO") && h.includes("ACEP"));
+  console.log("LRM column indices - tipo:", colTipo, "fecha:", colFecha, "plazo:", colPlazo, "tasa:", colTasa, "monto:", colMonto);
 
   const rows = [];
   for (let i = 1; i < lines.length; i++) {
@@ -65,6 +67,7 @@ function parseSheetCSV(text) {
   }
 
   rows.sort((a, b) => (b.fecha > a.fecha ? 1 : -1));
+  console.log("LRM parsed rows:", rows.length, "first 3:", rows.slice(0, 3));
 
   const curve = BUCKETS.map((bucket) => {
     const match = rows.find((r) => r.plazo >= bucket.min && r.plazo <= bucket.max);
@@ -75,6 +78,7 @@ function parseSheetCSV(text) {
       fecha: match ? match.fecha : null,
     };
   });
+  console.log("LRM curve:", curve);
 
   return { curve, rows };
 }
