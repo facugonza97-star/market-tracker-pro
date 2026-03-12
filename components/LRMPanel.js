@@ -15,6 +15,9 @@ export default function LRMPanel() {
   const [lrm, setLrm] = useState(null);
   const [calendar, setCalendar] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+  const [editingCal, setEditingCal] = useState(false);
+  const [newEntry, setNewEntry] = useState({ fecha: "", instrumento: "", plazo: "", monto: "" });
 
   useEffect(() => {
     fetch("/api/lrm").then((r) => r.json()).then(setLrm).catch(() => {});
@@ -28,17 +31,49 @@ export default function LRMPanel() {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
+    setUploadError(null);
     const form = new FormData();
     form.append("file", file);
     try {
       const res = await fetch("/api/lrm", { method: "POST", body: form });
       const data = await res.json();
-      setLrm(data);
+      if (data.error) {
+        setUploadError(data.error);
+      } else {
+        setLrm(data);
+      }
     } catch (err) {
-      console.error("Upload failed:", err);
+      setUploadError(err.message);
     }
     setUploading(false);
     e.target.value = "";
+  };
+
+  const addCalendarEntry = async () => {
+    if (!newEntry.fecha || !newEntry.instrumento) return;
+    const updated = [...(calendar || []), { ...newEntry }];
+    setCalendar(updated);
+    setNewEntry({ fecha: "", instrumento: "", plazo: "", monto: "" });
+    setEditingCal(false);
+    try {
+      await fetch("/api/bcu-calendar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      });
+    } catch {}
+  };
+
+  const removeCalendarEntry = async (index) => {
+    const updated = calendar.filter((_, i) => i !== index);
+    setCalendar(updated);
+    try {
+      await fetch("/api/bcu-calendar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      });
+    } catch {}
   };
 
   const curve = lrm?.curve?.filter((d) => d.rate !== null) || [];
@@ -58,6 +93,9 @@ export default function LRMPanel() {
         </label>
       </div>
 
+      {uploadError && (
+        <div className="text-[11px] text-red-400 mb-2">Error: {uploadError}</div>
+      )}
       {chartData.length > 0 ? (
         <>
           <ResponsiveContainer width="100%" height={200} >
@@ -119,7 +157,53 @@ export default function LRMPanel() {
 
       {/* BCU Calendar */}
       <div className="mt-4 border-t border-border pt-3">
-        <div className="text-[11px] font-semibold text-white mb-2">Calendario de Licitaciones BCU</div>
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-[11px] font-semibold text-white">Calendario de Licitaciones BCU</span>
+          <button
+            onClick={() => setEditingCal(!editingCal)}
+            className="text-[10px] text-accent hover:text-accent/80 font-medium"
+          >
+            {editingCal ? "Cancelar" : "+ Agregar"}
+          </button>
+        </div>
+        {editingCal && (
+          <div className="flex gap-1.5 mb-2">
+            <input
+              type="text"
+              placeholder="Fecha (ej: 19/3/2026)"
+              value={newEntry.fecha}
+              onChange={(e) => setNewEntry({ ...newEntry, fecha: e.target.value })}
+              className="bg-bg border border-border rounded px-2 py-1 text-[10px] text-white w-[110px]"
+            />
+            <input
+              type="text"
+              placeholder="Instrumento"
+              value={newEntry.instrumento}
+              onChange={(e) => setNewEntry({ ...newEntry, instrumento: e.target.value })}
+              className="bg-bg border border-border rounded px-2 py-1 text-[10px] text-white flex-1"
+            />
+            <input
+              type="text"
+              placeholder="Plazo"
+              value={newEntry.plazo}
+              onChange={(e) => setNewEntry({ ...newEntry, plazo: e.target.value })}
+              className="bg-bg border border-border rounded px-2 py-1 text-[10px] text-white w-[50px]"
+            />
+            <input
+              type="text"
+              placeholder="Monto"
+              value={newEntry.monto}
+              onChange={(e) => setNewEntry({ ...newEntry, monto: e.target.value })}
+              className="bg-bg border border-border rounded px-2 py-1 text-[10px] text-white w-[70px]"
+            />
+            <button
+              onClick={addCalendarEntry}
+              className="bg-accent text-white text-[10px] font-semibold px-2 py-1 rounded hover:bg-accent/80"
+            >
+              OK
+            </button>
+          </div>
+        )}
         {calendar && calendar.length > 0 ? (
           <table className="w-full">
             <thead>
@@ -128,6 +212,7 @@ export default function LRMPanel() {
                 <th className="px-2 py-1.5 text-left text-[10px] font-bold text-white uppercase">Instrumento</th>
                 <th className="px-2 py-1.5 text-center text-[10px] font-bold text-white uppercase">Plazo</th>
                 <th className="px-2 py-1.5 text-right text-[10px] font-bold text-white uppercase">Monto (M)</th>
+                <th className="px-1 py-1.5 w-6"></th>
               </tr>
             </thead>
             <tbody>
@@ -137,14 +222,20 @@ export default function LRMPanel() {
                   <td className="px-2 py-1.5 text-[11px] text-text-primary">{item.instrumento}</td>
                   <td className="px-2 py-1.5 text-center text-[11px] text-text-dim font-mono">{item.plazo}d</td>
                   <td className="px-2 py-1.5 text-right text-[11px] text-white font-mono">{item.monto}</td>
+                  <td className="px-1 py-1.5 text-center">
+                    <button
+                      onClick={() => removeCalendarEntry(i)}
+                      className="text-[10px] text-text-dim hover:text-red-400"
+                    >x</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : calendar && calendar.length === 0 ? (
-          <div className="text-[11px] text-text-dim">No hay licitaciones próximas</div>
+          <div className="text-[11px] text-text-dim">No hay licitaciones. Usá "+ Agregar" para cargar.</div>
         ) : (
-          <div className="text-[11px] text-text-dim">Cargando calendario BCU...</div>
+          <div className="text-[11px] text-text-dim">Cargando calendario...</div>
         )}
       </div>
     </div>

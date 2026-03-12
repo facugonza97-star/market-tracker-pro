@@ -117,14 +117,18 @@ async function writeToBlob(data) {
 
 export async function POST(request) {
   try {
+    console.log("LRM POST: receiving upload...");
     const formData = await request.formData();
     const file = formData.get("file");
     if (!file) {
+      console.error("LRM POST: no file in form data");
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
     }
 
+    console.log("LRM POST: file received:", file.name, file.size, "bytes");
     const buffer = Buffer.from(await file.arrayBuffer());
     const parsed = parseExcel(buffer);
+    console.log("LRM POST: parsed", parsed.rows.length, "rows, curve:", parsed.curve.map(c => c.rate));
 
     const lrmData = {
       curve: parsed.curve,
@@ -132,11 +136,17 @@ export async function POST(request) {
       updatedAt: new Date().toISOString(),
     };
 
-    await writeToBlob(lrmData);
+    try {
+      await writeToBlob(lrmData);
+    } catch (blobError) {
+      console.error("LRM POST: blob write failed:", blobError.message);
+      // Still return data even if blob write fails
+    }
+
     return NextResponse.json(lrmData);
   } catch (error) {
-    console.error("LRM upload error:", error);
-    return NextResponse.json({ error: "Failed to parse Excel" }, { status: 500 });
+    console.error("LRM POST error:", error.message, error.stack);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
