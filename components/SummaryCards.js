@@ -4,10 +4,13 @@ export default function SummaryCards({ quotes, treasury }) {
   if (!quotes?.sections) return null;
 
   const findTicker = (ticker) => {
+    // Check sections first
     for (const items of Object.values(quotes.sections)) {
       const found = items.find((i) => i.ticker === ticker);
       if (found) return found;
     }
+    // Check summaryQuotes
+    if (quotes.summaryQuotes?.[ticker]) return quotes.summaryQuotes[ticker];
     return null;
   };
 
@@ -25,14 +28,14 @@ export default function SummaryCards({ quotes, treasury }) {
   const vix = findTicker("^VIX");
   cards.push({ label: "VIX", val: vix?.price, chg: vix?.d1, fmt: "decimal" });
 
-  const btc = findTicker("IBIT");
-  cards.push({ label: "BTC", val: btc?.price, chg: btc?.d1, fmt: "price" });
+  const btc = findTicker("BTCUSD");
+  cards.push({ label: "Bitcoin", val: btc?.price, chg: btc?.d1, fmt: "price" });
 
-  const gold = findTicker("GLD");
+  const gold = findTicker("GCUSD");
   cards.push({ label: "Gold", val: gold?.price, chg: gold?.d1, fmt: "price" });
 
-  const oil = findTicker("USO");
-  cards.push({ label: "WTI", val: oil?.price, chg: oil?.d1, fmt: "price" });
+  const dxy = findTicker("DX=F");
+  cards.push({ label: "DXY", val: dxy?.price, chg: dxy?.d1, fmt: "decimal" });
 
   const format = (v, fmt) => {
     if (v === null || v === undefined) return "—";

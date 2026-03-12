@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { fetchQuotes, fetchStockPriceChange } from "@/lib/fmp";
-import { TICKER_CONFIG } from "@/lib/config";
+import { TICKER_CONFIG, SUMMARY_TICKERS } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +23,9 @@ export async function GET() {
       for (const item of section) {
         if (!allTickers.includes(item.ticker)) allTickers.push(item.ticker);
       }
+    }
+    for (const t of SUMMARY_TICKERS) {
+      if (!allTickers.includes(t)) allTickers.push(t);
     }
 
     // Fetch quotes and price changes in parallel
@@ -66,8 +69,21 @@ export async function GET() {
       });
     }
 
+    // Build summary quotes for tickers not in sections
+    const summaryQuotes = {};
+    for (const t of SUMMARY_TICKERS) {
+      const q = quoteMap[t] || {};
+      const pc = changeMap[t] || {};
+      summaryQuotes[t] = {
+        price: q.price ?? null,
+        yearHigh: q.yearHigh ?? null,
+        d1: pc["1D"] ?? q.changePercentage ?? null,
+      };
+    }
+
     const result = {
       sections,
+      summaryQuotes,
       updatedAt: new Date().toISOString(),
     };
 
