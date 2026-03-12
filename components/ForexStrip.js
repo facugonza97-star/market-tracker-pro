@@ -76,9 +76,12 @@ export default function ForexStrip({ forex, full }) {
     );
   }
 
+  const STRIP_TICKERS = ["USDUYU", "EURUSD", "USDBRL", "UUP"];
+  const stripForex = forex.filter((f) => STRIP_TICKERS.includes(f.ticker));
+
   return (
     <div className="flex gap-2 overflow-x-auto pb-1">
-      {forex.map((f, i) => (
+      {stripForex.map((f, i) => (
         <div
           key={i}
           className="bg-card border border-border rounded-lg px-3.5 py-2 flex items-center gap-2.5 min-w-[120px]"
