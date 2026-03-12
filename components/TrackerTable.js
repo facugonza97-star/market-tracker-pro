@@ -14,7 +14,10 @@ const COLS = [
 function HeatCell({ val }) {
   const h = heatColor(val);
   return (
-    <td className={`px-1.5 py-2 text-center text-[11px] font-medium font-mono ${h.bg} ${h.text}`}>
+    <td
+      className="px-1.5 py-2 text-center text-[11px] font-medium font-mono"
+      style={{ backgroundColor: h.bg, color: h.color }}
+    >
       {fmtPct(val)}
     </td>
   );
