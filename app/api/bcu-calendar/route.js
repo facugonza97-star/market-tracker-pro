@@ -1,51 +1,70 @@
 import { NextResponse } from "next/server";
-import { put, list } from "@vercel/blob";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-const BLOB_NAME = "bcu-calendar.json";
+const SHEET_CSV_URL =
+  "https://docs.google.com/spreadsheets/d/19C_ncF_8YYpHXVg8FtGaT9HtTO3e3OeWCvmv9y0L8Kg/gviz/tq?tqx=out:csv&sheet=BCU";
 
-async function readFromBlob() {
-  try {
-    const { blobs } = await list();
-    console.log("BCU calendar list blobs:", blobs.map(b => b.pathname));
-    const match = blobs.find((b) => b.pathname === BLOB_NAME || b.pathname.endsWith("/" + BLOB_NAME));
-    if (!match) return [];
-    const res = await fetch(match.url);
-    if (!res.ok) return [];
-    return await res.json();
-  } catch (error) {
-    console.error("BCU calendar read error:", error.message);
-    return [];
+function parseCSV(text) {
+  const lines = text.split("\n").filter((l) => l.trim());
+  if (lines.length < 2) return [];
+
+  const headers = lines[0].split(",").map((h) => h.replace(/"/g, "").trim());
+
+  const colFechaLic = headers.findIndex((h) => h.toUpperCase().includes("FECHA") && h.toUpperCase().includes("LIC"));
+  const colFechaVenc = headers.findIndex((h) => h.toUpperCase().includes("FECHA") && h.toUpperCase().includes("VENC"));
+  const colPlazo = headers.findIndex((h) => h.toUpperCase().includes("PLAZO"));
+  const colMoneda = headers.findIndex((h) => h.toUpperCase().includes("MONEDA"));
+
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cells = parseCSVLine(lines[i]);
+    if (!cells.length) continue;
+
+    const fechaLicitacion = cells[colFechaLic >= 0 ? colFechaLic : 0]?.replace(/"/g, "").trim() || "";
+    const fechaVencimiento = cells[colFechaVenc >= 0 ? colFechaVenc : 1]?.replace(/"/g, "").trim() || "";
+    const plazo = cells[colPlazo >= 0 ? colPlazo : 2]?.replace(/"/g, "").trim() || "";
+    const moneda = cells[colMoneda >= 0 ? colMoneda : 3]?.replace(/"/g, "").trim() || "";
+
+    if (!fechaLicitacion && !fechaVencimiento) continue;
+    rows.push({ fechaLicitacion, fechaVencimiento, plazo, moneda });
   }
+
+  return rows;
 }
 
-async function writeToBlob(data) {
-  try {
-    await put(BLOB_NAME, JSON.stringify(data), {
-      access: "public",
-      addRandomSuffix: false,
-    });
-  } catch (error) {
-    console.error("BCU calendar write error:", error.message);
+function parseCSVLine(line) {
+  const cells = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+    } else if (ch === "," && !inQuotes) {
+      cells.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
   }
+  cells.push(current);
+  return cells;
 }
 
 export async function GET() {
-  const data = await readFromBlob();
-  return NextResponse.json(data);
-}
-
-export async function POST(request) {
   try {
-    const data = await request.json();
-    if (!Array.isArray(data)) {
-      return NextResponse.json({ error: "Expected array" }, { status: 400 });
+    const res = await fetch(SHEET_CSV_URL, { cache: "no-store" });
+    if (!res.ok) {
+      console.error("BCU Sheet fetch failed:", res.status);
+      return NextResponse.json([]);
     }
-    await writeToBlob(data);
+    const text = await res.text();
+    const data = parseCSV(text);
     return NextResponse.json(data);
   } catch (error) {
-    console.error("BCU calendar POST error:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("BCU calendar error:", error.message);
+    return NextResponse.json([]);
   }
 }

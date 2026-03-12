@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { put, list } from "@vercel/blob";
-import * as XLSX from "xlsx";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-const BLOB_NAME = "lrm-data.json";
-const EMPTY_DATA = { curve: null, rows: [], updatedAt: null };
+const SHEET_CSV_URL =
+  "https://docs.google.com/spreadsheets/d/19C_ncF_8YYpHXVg8FtGaT9HtTO3e3OeWCvmv9y0L8Kg/gviz/tq?tqx=out:csv&sheet=LRM";
 
 const BUCKETS = [
   { label: "30d", min: 0, max: 35 },
@@ -14,61 +13,54 @@ const BUCKETS = [
   { label: "360d", min: 340, max: 370 },
 ];
 
-function parseExcel(buffer) {
-  const workbook = XLSX.read(buffer, { type: "buffer" });
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+const EMPTY_DATA = { curve: null, rows: [], updatedAt: null };
 
-  let headerIdx = -1;
-  let colTipo = -1, colFecha = -1, colPlazo = -1, colTasa = -1, colMonto = -1;
-
-  for (let i = 0; i < Math.min(json.length, 15); i++) {
-    const row = json[i];
-    if (!row) continue;
-    const cells = row.map((c) => String(c || "").toUpperCase().trim());
-    const tipoIdx = cells.findIndex((c) => c.includes("TIPO"));
-    if (tipoIdx >= 0) {
-      headerIdx = i;
-      for (let j = 0; j < cells.length; j++) {
-        const c = cells[j];
-        if (c.includes("TIPO")) colTipo = j;
-        else if (c.includes("FECHA") && c.includes("LIC")) colFecha = j;
-        else if (c.includes("PLAZO")) colPlazo = j;
-        else if (c.includes("TASA") && c.includes("CORTE")) colTasa = j;
-        else if (c.includes("MONTO") && c.includes("ACEP")) colMonto = j;
-      }
-      break;
+function parseCSVLine(line) {
+  const cells = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+    } else if (ch === "," && !inQuotes) {
+      cells.push(current);
+      current = "";
+    } else {
+      current += ch;
     }
   }
+  cells.push(current);
+  return cells;
+}
 
-  if (colTipo === -1) colTipo = 0;
-  if (colFecha === -1) colFecha = 3;
-  if (colPlazo === -1) colPlazo = 6;
-  if (colTasa === -1) colTasa = 7;
-  if (colMonto === -1) colMonto = 10;
+function parseSheetCSV(text) {
+  const lines = text.split("\n").filter((l) => l.trim());
+  if (lines.length < 2) return { curve: null, rows: [] };
+
+  const headers = lines[0].split(",").map((h) => h.replace(/"/g, "").trim().toUpperCase());
+
+  const colTipo = headers.findIndex((h) => h.includes("TIPO"));
+  const colFecha = headers.findIndex((h) => h.includes("FECHA") && h.includes("LIC"));
+  const colPlazo = headers.findIndex((h) => h.includes("PLAZO"));
+  const colTasa = headers.findIndex((h) => h.includes("TASA") && h.includes("CORTE"));
+  const colMonto = headers.findIndex((h) => h.includes("MONTO") && h.includes("ACEP"));
 
   const rows = [];
-  const startRow = headerIdx >= 0 ? headerIdx + 1 : 1;
+  for (let i = 1; i < lines.length; i++) {
+    const cells = parseCSVLine(lines[i]);
+    if (!cells.length) continue;
 
-  for (let i = startRow; i < json.length; i++) {
-    const row = json[i];
-    if (!row || !row[colTipo]) continue;
-
-    const tipo = String(row[colTipo]).trim().toUpperCase();
+    const tipo = (cells[colTipo >= 0 ? colTipo : 0] || "").replace(/"/g, "").trim().toUpperCase();
     if (!tipo.includes("LRMMN") || tipo.includes("LRMMNNC")) continue;
 
-    const plazo = parseFloat(row[colPlazo]);
-    const tasa = parseFloat(row[colTasa]);
+    const plazo = parseFloat((cells[colPlazo >= 0 ? colPlazo : 2] || "").replace(/"/g, ""));
+    const tasa = parseFloat((cells[colTasa >= 0 ? colTasa : 3] || "").replace(/"/g, ""));
     if (isNaN(plazo) || isNaN(tasa)) continue;
 
-    let fecha = row[colFecha];
-    if (typeof fecha === "number") {
-      fecha = XLSX.SSF.format("yyyy-mm-dd", fecha);
-    } else {
-      fecha = String(fecha || "");
-    }
+    const fecha = (cells[colFecha >= 0 ? colFecha : 1] || "").replace(/"/g, "").trim();
+    const monto = parseFloat((cells[colMonto >= 0 ? colMonto : 4] || "").replace(/"/g, "")) || 0;
 
-    const monto = parseFloat(row[colMonto]) || 0;
     rows.push({ tipo, fecha, plazo, tasa, monto });
   }
 
@@ -87,73 +79,27 @@ function parseExcel(buffer) {
   return { curve, rows };
 }
 
-async function readFromBlob() {
+export async function GET() {
   try {
-    const { blobs } = await list();
-    console.log("LRM list blobs:", blobs.map(b => b.pathname));
-    // Match by pathname ending, since Vercel may prefix with store id
-    const match = blobs.find((b) => b.pathname === BLOB_NAME || b.pathname.endsWith("/" + BLOB_NAME));
-    if (!match) {
-      console.log("LRM blob not found among", blobs.length, "blobs");
-      return EMPTY_DATA;
-    }
-    console.log("LRM blob found:", match.pathname, "url:", match.url);
-    const res = await fetch(match.url);
+    const res = await fetch(SHEET_CSV_URL, { cache: "no-store" });
     if (!res.ok) {
-      console.error("LRM blob fetch failed:", res.status);
-      return EMPTY_DATA;
+      console.error("LRM Sheet fetch failed:", res.status);
+      return NextResponse.json(EMPTY_DATA);
     }
-    return await res.json();
-  } catch (error) {
-    console.error("LRM readFromBlob error:", error.message);
-    return EMPTY_DATA;
-  }
-}
+    const text = await res.text();
+    const parsed = parseSheetCSV(text);
 
-async function writeToBlob(data) {
-  const blob = await put(BLOB_NAME, JSON.stringify(data), {
-    access: "public",
-    addRandomSuffix: false,
-  });
-  console.log("LRM data saved to blob. pathname:", blob.pathname, "url:", blob.url);
-}
-
-export async function POST(request) {
-  try {
-    console.log("LRM POST: receiving upload...");
-    const formData = await request.formData();
-    const file = formData.get("file");
-    if (!file) {
-      console.error("LRM POST: no file in form data");
-      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
+    if (!parsed.rows.length) {
+      return NextResponse.json(EMPTY_DATA);
     }
 
-    console.log("LRM POST: file received:", file.name, file.size, "bytes");
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const parsed = parseExcel(buffer);
-    console.log("LRM POST: parsed", parsed.rows.length, "rows, curve:", parsed.curve.map(c => c.rate));
-
-    const lrmData = {
+    return NextResponse.json({
       curve: parsed.curve,
       rows: parsed.rows,
       updatedAt: new Date().toISOString(),
-    };
-
-    try {
-      await writeToBlob(lrmData);
-    } catch (blobError) {
-      console.error("LRM POST: blob write failed:", blobError.message);
-      // Still return data even if blob write fails
-    }
-
-    return NextResponse.json(lrmData);
+    });
   } catch (error) {
-    console.error("LRM POST error:", error.message, error.stack);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("LRM error:", error.message);
+    return NextResponse.json(EMPTY_DATA);
   }
-}
-
-export async function GET() {
-  const data = await readFromBlob();
-  return NextResponse.json(data);
 }
