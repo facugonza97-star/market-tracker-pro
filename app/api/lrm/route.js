@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
+import { put, list } from "@vercel/blob";
 import * as XLSX from "xlsx";
 
-// In-memory store for LRM data (persists across requests in the same server instance)
-let lrmData = { curve: null, rows: [], updatedAt: null };
+const BLOB_NAME = "lrm-data.json";
+const EMPTY_DATA = { curve: null, rows: [], updatedAt: null };
 
 const BUCKETS = [
   { label: "30d", min: 0, max: 35 },
@@ -16,7 +17,6 @@ function parseExcel(buffer) {
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-  // Find header row and column indices
   let headerIdx = -1;
   let colTipo = -1, colFecha = -1, colPlazo = -1, colTasa = -1, colMonto = -1;
 
@@ -27,7 +27,6 @@ function parseExcel(buffer) {
     const tipoIdx = cells.findIndex((c) => c.includes("TIPO"));
     if (tipoIdx >= 0) {
       headerIdx = i;
-      // Map columns by header names
       for (let j = 0; j < cells.length; j++) {
         const c = cells[j];
         if (c.includes("TIPO")) colTipo = j;
@@ -40,7 +39,6 @@ function parseExcel(buffer) {
     }
   }
 
-  // Fallback to positional columns (A=0, D=3, G=6, H=7, K=10)
   if (colTipo === -1) colTipo = 0;
   if (colFecha === -1) colFecha = 3;
   if (colPlazo === -1) colPlazo = 6;
@@ -63,21 +61,17 @@ function parseExcel(buffer) {
 
     let fecha = row[colFecha];
     if (typeof fecha === "number") {
-      // Excel serial date
       fecha = XLSX.SSF.format("yyyy-mm-dd", fecha);
     } else {
       fecha = String(fecha || "");
     }
 
     const monto = parseFloat(row[colMonto]) || 0;
-
     rows.push({ tipo, fecha, plazo, tasa, monto });
   }
 
-  // Sort by date descending
   rows.sort((a, b) => (b.fecha > a.fecha ? 1 : -1));
 
-  // Build curve: pick most recent for each bucket
   const curve = BUCKETS.map((bucket) => {
     const match = rows.find((r) => r.plazo >= bucket.min && r.plazo <= bucket.max);
     return {
@@ -91,6 +85,25 @@ function parseExcel(buffer) {
   return { curve, rows };
 }
 
+async function readFromBlob() {
+  try {
+    const { blobs } = await list({ prefix: BLOB_NAME });
+    if (blobs.length === 0) return EMPTY_DATA;
+    const res = await fetch(blobs[0].url);
+    if (!res.ok) return EMPTY_DATA;
+    return await res.json();
+  } catch {
+    return EMPTY_DATA;
+  }
+}
+
+async function writeToBlob(data) {
+  await put(BLOB_NAME, JSON.stringify(data), {
+    access: "public",
+    addRandomSuffix: false,
+  });
+}
+
 export async function POST(request) {
   try {
     const formData = await request.formData();
@@ -102,12 +115,13 @@ export async function POST(request) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const parsed = parseExcel(buffer);
 
-    lrmData = {
+    const lrmData = {
       curve: parsed.curve,
       rows: parsed.rows,
       updatedAt: new Date().toISOString(),
     };
 
+    await writeToBlob(lrmData);
     return NextResponse.json(lrmData);
   } catch (error) {
     console.error("LRM upload error:", error);
@@ -116,5 +130,6 @@ export async function POST(request) {
 }
 
 export async function GET() {
-  return NextResponse.json(lrmData);
+  const data = await readFromBlob();
+  return NextResponse.json(data);
 }
