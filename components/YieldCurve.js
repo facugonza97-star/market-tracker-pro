@@ -43,10 +43,10 @@ export default function YieldCurve({ treasury, full }) {
   const height = full ? 360 : 200;
 
   return (
-    <div className="bg-card border border-border rounded-xl p-4">
-      <div className="flex justify-between items-baseline mb-3">
-        <span className="text-xs font-semibold text-white">🇺🇸 US Treasury Yield Curve</span>
-        <span className="text-[10px] text-text-dim">All maturities</span>
+    <div className="bg-card border border-border rounded-xl p-5">
+      <div className="flex justify-between items-baseline mb-4">
+        <span className="text-sm font-bold text-white">🇺🇸 US Treasury Yield Curve</span>
+        <span className="text-[11px] text-text-dim">All maturities</span>
       </div>
       <ResponsiveContainer width="100%" height={height}>
         <AreaChart data={data} margin={{ top: 20, right: 10, left: 0, bottom: 0 }}>

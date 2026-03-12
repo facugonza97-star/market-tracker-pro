@@ -31,9 +31,9 @@ export default function LRMPanel() {
   const maxRate = rates.length ? Math.ceil(Math.max(...rates) * 10) / 10 + 0.5 : 10;
 
   return (
-    <div className="bg-card border border-border rounded-xl p-4">
-      <div className="flex justify-between items-center mb-3">
-        <span className="text-xs font-semibold text-white">🇺🇾 Letras de Regulación Monetaria (LRM)</span>
+    <div className="bg-card border border-border rounded-xl p-5">
+      <div className="flex justify-between items-center mb-4">
+        <span className="text-sm font-bold text-white">🇺🇾 Letras de Regulación Monetaria (LRM)</span>
       </div>
 
       {chartData.length > 0 ? (
@@ -96,33 +96,33 @@ export default function LRMPanel() {
       )}
 
       {/* BCU Calendar */}
-      <div className="mt-4 border-t border-border pt-3">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-[11px] font-semibold text-white">Calendario de Licitaciones BCU</span>
+      <div className="mt-5 border-t border-border pt-4">
+        <div className="flex justify-between items-center mb-3">
+          <span className="text-sm font-bold text-white">Calendario de Licitaciones BCU</span>
         </div>
         {calendar && calendar.length > 0 ? (
           <table className="w-full">
             <thead>
               <tr style={{ backgroundColor: "#0d0d1a" }}>
-                <th className="px-2 py-1.5 text-left text-[10px] font-bold text-white uppercase">Fecha Lic.</th>
-                <th className="px-2 py-1.5 text-left text-[10px] font-bold text-white uppercase">Fecha Venc.</th>
-                <th className="px-2 py-1.5 text-center text-[10px] font-bold text-white uppercase">Plazo</th>
+                <th className="px-3 py-2 text-left text-[11px] font-bold text-white uppercase">Fecha Lic.</th>
+                <th className="px-3 py-2 text-left text-[11px] font-bold text-white uppercase">Fecha Venc.</th>
+                <th className="px-3 py-2 text-center text-[11px] font-bold text-white uppercase">Plazo</th>
               </tr>
             </thead>
             <tbody>
               {calendar.map((item, i) => (
                 <tr key={i} className={`border-b border-border ${i % 2 === 0 ? "" : "bg-white/[0.01]"}`}>
-                  <td className="px-2 py-1.5 text-[11px] text-white font-mono">{item.fechaLicitacion}</td>
-                  <td className="px-2 py-1.5 text-[11px] text-text-primary font-mono">{item.fechaVencimiento}</td>
-                  <td className="px-2 py-1.5 text-center text-[11px] text-text-dim font-mono">{item.plazo}d</td>
+                  <td className="px-3 py-2 text-xs text-white font-mono">{item.fechaLicitacion}</td>
+                  <td className="px-3 py-2 text-xs text-white font-mono">{item.fechaVencimiento}</td>
+                  <td className="px-3 py-2 text-center text-xs text-white font-mono">{item.plazo}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : calendar && calendar.length === 0 ? (
-          <div className="text-[11px] text-text-dim">No hay licitaciones programadas.</div>
+          <div className="text-xs text-text-dim">No hay licitaciones programadas.</div>
         ) : (
-          <div className="text-[11px] text-text-dim">Cargando calendario...</div>
+          <div className="text-xs text-text-dim">Cargando calendario...</div>
         )}
       </div>
     </div>

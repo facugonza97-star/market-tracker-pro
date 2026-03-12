@@ -80,21 +80,21 @@ export default function ForexStrip({ forex, full }) {
   const stripForex = forex.filter((f) => STRIP_TICKERS.includes(f.ticker));
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       {stripForex.map((f, i) => (
         <div
           key={i}
-          className="bg-card border border-border rounded-lg px-3.5 py-2 flex items-center gap-2.5 min-w-[120px]"
+          className="bg-card border border-border rounded-xl px-5 py-4 flex items-center gap-4"
         >
-          <span className="text-base">{f.flag}</span>
-          <div>
-            <div className="text-[9px] text-text-dim tracking-wide">{f.name}</div>
-            <div className="text-sm font-bold text-white font-mono">
+          <span className="text-2xl">{f.flag}</span>
+          <div className="flex-1">
+            <div className="text-[11px] text-text-dim font-medium tracking-wide mb-0.5">{f.name}</div>
+            <div className="text-xl font-bold text-white font-mono">
               {f.price ? (f.price < 10 ? f.price.toFixed(4) : f.price.toFixed(2)) : "—"}
             </div>
           </div>
           {f.change !== null && (
-            <span className={`text-[10px] font-medium ml-auto ${f.change >= 0 ? "text-pos/70" : "text-neg/70"}`}>
+            <span className={`text-xs font-semibold ${f.change >= 0 ? "text-pos" : "text-neg"}`}>
               {f.change >= 0 ? "+" : ""}{parseFloat(f.change).toFixed(1)}%
             </span>
           )}

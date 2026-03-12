@@ -62,14 +62,13 @@ export default function Home() {
       )}
 
       {!loading && tab === "Overview" && (
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-8 py-6 space-y-6">
           <SummaryCards quotes={quotes} treasury={treasury} />
           <ForexStrip forex={forex} />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <YieldCurve treasury={treasury} />
             <LRMPanel />
           </div>
-          <TrackerTable quotes={quotes} />
         </div>
       )}
 
