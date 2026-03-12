@@ -34,11 +34,6 @@ export default function SummaryCards({ quotes, treasury }) {
   const gold = findTicker("GCUSD");
   cards.push({ label: "Gold", val: gold?.price, chg: gold?.d1, fmt: "price" });
 
-  const wti = findTicker("WTI");
-  cards.push({ label: "WTI", val: wti?.price, chg: wti?.d1, fmt: "decimal" });
-
-  const dxy = findTicker("DXY");
-  cards.push({ label: "DXY", val: dxy?.price, chg: dxy?.d1, fmt: "decimal" });
 
   const format = (v, fmt) => {
     if (v === null || v === undefined) return "—";
