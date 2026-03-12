@@ -1,22 +1,28 @@
 import { NextResponse } from "next/server";
 
-// Mock data — the /api/v4/treasury endpoint is not available in the current FMP plan
-const MOCK_TREASURY = {
-  date: "2026-03-12",
-  month1: 4.34,
-  month2: 4.30,
-  month3: 4.32,
-  month6: 4.28,
-  year1: 4.18,
-  year2: 4.05,
-  year3: 3.98,
-  year5: 3.90,
-  year7: 3.92,
-  year10: 3.95,
-  year20: 4.20,
-  year30: 4.15,
-};
+export const dynamic = "force-dynamic";
+
+const API_KEY = process.env.FMP_API_KEY;
+let cache = { data: null, timestamp: 0 };
+const CACHE_TTL = 30 * 60 * 1000; // 30 min
 
 export async function GET() {
-  return NextResponse.json(MOCK_TREASURY);
+  const now = Date.now();
+  if (cache.data && now - cache.timestamp < CACHE_TTL) {
+    return NextResponse.json(cache.data);
+  }
+  try {
+    const res = await fetch(
+      `https://financialmodelingprep.com/stable/treasury-rates?apikey=${API_KEY}`
+    );
+    if (!res.ok) throw new Error("Treasury fetch failed");
+    const data = await res.json();
+    const latest = Array.isArray(data) ? data[0] : data;
+    cache = { data: latest, timestamp: now };
+    return NextResponse.json(latest);
+  } catch (error) {
+    console.error("Treasury API error:", error);
+    if (cache.data) return NextResponse.json(cache.data);
+    return NextResponse.json({ error: "Failed" }, { status: 500 });
+  }
 }

@@ -51,18 +51,17 @@ export async function GET() {
         return {
           name: item.name,
           ticker: item.ticker,
-          price: q.price || null,
-          yearHigh: q.yearHigh || null,
-          yearLow: q.yearLow || null,
-          change: q.change || null,
-          changesPercentage: q.changePercentage || null,
-          // Price changes from FMP
-          d1: pc["1D"] || q.changePercentage || null,
-          w1: pc["5D"] || null,
-          m1: pc["1M"] || null,
-          ytd: pc["ytd"] || null,
-          y1: pc["1Y"] || null,
-          y3: pc["3Y"] || null,
+          price: q.price ?? null,
+          yearHigh: q.yearHigh ?? null,
+          yearLow: q.yearLow ?? null,
+          change: q.change ?? null,
+          changesPercentage: q.changePercentage ?? null,
+          d1: pc["1D"] ?? q.changePercentage ?? null,
+          w1: pc["5D"] ?? null,
+          m1: pc["1M"] ?? null,
+          ytd: pc["ytd"] ?? null,
+          y1: pc["1Y"] ?? null,
+          y3: pc["3Y"] ?? null,
         };
       });
     }
