@@ -6,7 +6,7 @@ import ForexStrip from "@/components/ForexStrip";
 import YieldCurve from "@/components/YieldCurve";
 import NewsPanel from "@/components/NewsPanel";
 import LRMPanel from "@/components/LRMPanel";
-import Movers from "@/components/Movers";
+import EconCalendar from "@/components/EconCalendar";
 import Header from "@/components/Header";
 
 const TABS = ["Overview", "Tracker", "Curves", "Forex", "Watchlist"];
@@ -18,7 +18,6 @@ export default function Home() {
   const [news, setNews] = useState(null);
   const [forex, setForex] = useState(null);
   const [macro, setMacro] = useState(null);
-  const [movers, setMovers] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(null);
 
@@ -30,22 +29,19 @@ export default function Home() {
         fetch("/api/news"),
         fetch("/api/forex"),
         fetch("/api/macro"),
-        fetch("/api/movers"),
       ]);
-      const [qData, tData, nData, fData, mData, mvData] = await Promise.all([
+      const [qData, tData, nData, fData, mData] = await Promise.all([
         qRes.json(),
         tRes.json(),
         nRes.json(),
         fRes.json(),
         mRes.json(),
-        mvRes.json(),
       ]);
       setQuotes(qData);
       setTreasury(tData);
       setNews(nData);
       setForex(fData);
       setMacro(mData);
-      setMovers(mvData);
       setLastUpdate(new Date());
       setLoading(false);
     } catch (e) {
@@ -78,7 +74,7 @@ export default function Home() {
             <YieldCurve treasury={treasury} />
             <LRMPanel />
           </div>
-          <Movers movers={movers} />
+          <EconCalendar />
         </div>
       )}
 
