@@ -90,11 +90,14 @@ function parseExcel(buffer) {
 async function readFromBlob() {
   try {
     const { blobs } = await list();
-    const match = blobs.find((b) => b.pathname === BLOB_NAME);
+    console.log("LRM list blobs:", blobs.map(b => b.pathname));
+    // Match by pathname ending, since Vercel may prefix with store id
+    const match = blobs.find((b) => b.pathname === BLOB_NAME || b.pathname.endsWith("/" + BLOB_NAME));
     if (!match) {
-      console.log("LRM blob not found, returning empty data");
+      console.log("LRM blob not found among", blobs.length, "blobs");
       return EMPTY_DATA;
     }
+    console.log("LRM blob found:", match.pathname, "url:", match.url);
     const res = await fetch(match.url);
     if (!res.ok) {
       console.error("LRM blob fetch failed:", res.status);
@@ -112,7 +115,7 @@ async function writeToBlob(data) {
     access: "public",
     addRandomSuffix: false,
   });
-  console.log("LRM data saved to blob:", blob.url);
+  console.log("LRM data saved to blob. pathname:", blob.pathname, "url:", blob.url);
 }
 
 export async function POST(request) {

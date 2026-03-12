@@ -8,7 +8,8 @@ const BLOB_NAME = "bcu-calendar.json";
 async function readFromBlob() {
   try {
     const { blobs } = await list();
-    const match = blobs.find((b) => b.pathname === BLOB_NAME);
+    console.log("BCU calendar list blobs:", blobs.map(b => b.pathname));
+    const match = blobs.find((b) => b.pathname === BLOB_NAME || b.pathname.endsWith("/" + BLOB_NAME));
     if (!match) return [];
     const res = await fetch(match.url);
     if (!res.ok) return [];
