@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { fetchForexQuotes } from "@/lib/fmp";
 import { FOREX_CONFIG } from "@/lib/config";
 
-const API_KEY = process.env.FMP_API_KEY;
+export const dynamic = "force-dynamic";
+
 let cache = { data: null, timestamp: 0 };
 const CACHE_TTL = 5 * 60 * 1000;
 
@@ -11,12 +13,8 @@ export async function GET() {
     return NextResponse.json(cache.data);
   }
   try {
-    const tickers = FOREX_CONFIG.map(f => f.ticker).join(",");
-    const res = await fetch(
-      `https://financialmodelingprep.com/stable/quote?symbol=${tickers}&apikey=${API_KEY}`
-    );
-    if (!res.ok) throw new Error("Forex fetch failed");
-    const data = await res.json();
+    const tickers = FOREX_CONFIG.map(f => f.ticker);
+    const data = await fetchForexQuotes(tickers);
 
     const result = FOREX_CONFIG.map(fc => {
       const q = data.find(d => d.symbol === fc.ticker) || {};
