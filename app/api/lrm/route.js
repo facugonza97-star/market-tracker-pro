@@ -72,7 +72,13 @@ function parseSheetCSV(text) {
   }
 
   console.log("LRM LRMMN rows before sort:", rows.length, "all:", JSON.stringify(rows));
-  rows.sort((a, b) => (b.fecha > a.fecha ? 1 : -1));
+  rows.sort((a, b) => {
+    const [da, ma, ya] = a.fecha.split("/").map(Number);
+    const [db, mb, yb] = b.fecha.split("/").map(Number);
+    const dateA = new Date(ya, ma - 1, da);
+    const dateB = new Date(yb, mb - 1, db);
+    return dateB - dateA;
+  });
   console.log("LRM rows after sort, first 5:", JSON.stringify(rows.slice(0, 5)));
 
   const curve = BUCKETS.map((bucket) => {
