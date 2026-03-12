@@ -42,16 +42,16 @@ export default function SummaryCards({ quotes, treasury }) {
   };
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1">
+    <div className="flex gap-3 overflow-x-auto pb-1">
       {cards.map((c, i) => (
         <div
           key={i}
-          className="bg-card border border-border rounded-lg px-4 py-3 min-w-[130px] flex-1"
+          className="bg-card border border-border rounded-xl px-5 py-3.5 min-w-[140px] flex-1"
         >
-          <div className="text-[10px] text-text-dim font-medium tracking-wide mb-1">{c.label}</div>
-          <div className="text-lg font-bold text-white font-mono">{format(c.val, c.fmt)}</div>
+          <div className="text-[11px] text-text-dim font-semibold tracking-wide mb-1">{c.label}</div>
+          <div className="text-xl font-bold text-white font-mono">{format(c.val, c.fmt)}</div>
           {c.chg !== null && c.chg !== undefined && (
-            <div className={`text-[11px] font-medium mt-0.5 ${c.chg >= 0 ? "text-pos/80" : "text-neg/80"}`}>
+            <div className={`text-xs font-semibold mt-0.5 ${c.chg >= 0 ? "text-pos" : "text-neg"}`}>
               {c.chg >= 0 ? "+" : ""}{parseFloat(c.chg).toFixed(1)}%
             </div>
           )}

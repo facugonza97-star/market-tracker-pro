@@ -45,8 +45,8 @@ export default function YieldCurve({ treasury, full }) {
   return (
     <div className="bg-card border border-border rounded-xl p-5">
       <div className="flex justify-between items-baseline mb-4">
-        <span className="text-sm font-bold text-white">🇺🇸 US Treasury Yield Curve</span>
-        <span className="text-[11px] text-text-dim">All maturities</span>
+        <span className="text-[20px] font-semibold text-white">🇺🇸 US Treasury Yield Curve</span>
+        <span className="text-xs text-text-dim">All maturities</span>
       </div>
       <ResponsiveContainer width="100%" height={height}>
         <AreaChart data={data} margin={{ top: 20, right: 10, left: 0, bottom: 0 }}>
@@ -111,7 +111,7 @@ export default function YieldCurve({ treasury, full }) {
               </span>
             </div>
             <div className="mt-2 px-2">
-              <p className="text-[10px] text-white">• Si el spread es negativo la curva está invertida: inversores esperan menor crecimiento y tasas más bajas, prefiriendo asegurar rendimientos largos ante expectativa de recesión.</p>
+              <p className="text-[13px] text-text-dim leading-relaxed">• Si el spread es negativo la curva está invertida: inversores esperan menor crecimiento y tasas más bajas, prefiriendo asegurar rendimientos largos ante expectativa de recesión.</p>
             </div>
           </div>
         );

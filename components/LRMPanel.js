@@ -33,7 +33,7 @@ export default function LRMPanel() {
   return (
     <div className="bg-card border border-border rounded-xl p-5">
       <div className="flex justify-between items-center mb-4">
-        <span className="text-sm font-bold text-white">🇺🇾 Letras de Regulación Monetaria (LRM)</span>
+        <span className="text-[20px] font-semibold text-white">🇺🇾 Letras de Regulación Monetaria (LRM)</span>
       </div>
 
       {chartData.length > 0 ? (
@@ -98,15 +98,15 @@ export default function LRMPanel() {
       {/* BCU Calendar */}
       <div className="mt-5 border-t border-border pt-4">
         <div className="flex justify-between items-center mb-3">
-          <span className="text-sm font-bold text-white">Calendario de Licitaciones BCU</span>
+          <span className="text-[20px] font-semibold text-white">Calendario de Licitaciones BCU</span>
         </div>
         {calendar && calendar.length > 0 ? (
           <table className="w-full">
             <thead>
               <tr style={{ backgroundColor: "#0d0d1a" }}>
-                <th className="px-3 py-2 text-left text-[11px] font-bold text-white uppercase">Fecha Lic.</th>
-                <th className="px-3 py-2 text-left text-[11px] font-bold text-white uppercase">Fecha Venc.</th>
-                <th className="px-3 py-2 text-center text-[11px] font-bold text-white uppercase">Plazo</th>
+                <th className="px-3 py-2.5 text-left text-xs font-bold text-white uppercase tracking-wide">Fecha Lic.</th>
+                <th className="px-3 py-2.5 text-left text-xs font-bold text-white uppercase tracking-wide">Fecha Venc.</th>
+                <th className="px-3 py-2.5 text-center text-xs font-bold text-white uppercase tracking-wide">Plazo</th>
               </tr>
             </thead>
             <tbody>

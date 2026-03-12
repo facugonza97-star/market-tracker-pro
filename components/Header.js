@@ -13,8 +13,8 @@ export default function Header({ tab, setTab, tabs, lastUpdate }) {
               onClick={() => setTab(t)}
               className={`px-3.5 py-3 text-xs font-medium transition-colors border-b-2 ${
                 tab === t
-                  ? "text-white border-accent"
-                  : "text-text-dim border-transparent hover:text-text-sec"
+                  ? "text-white border-accent font-semibold"
+                  : "text-text-sec border-transparent hover:text-white"
               }`}
             >
               {t}

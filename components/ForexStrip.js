@@ -88,7 +88,7 @@ export default function ForexStrip({ forex, full }) {
         >
           <span className="text-2xl">{f.flag}</span>
           <div className="flex-1">
-            <div className="text-[11px] text-text-dim font-medium tracking-wide mb-0.5">{f.name}</div>
+            <div className="text-xs text-text-dim font-semibold tracking-wide mb-0.5">{f.name}</div>
             <div className="text-xl font-bold text-white font-mono">
               {f.price ? (f.price < 10 ? f.price.toFixed(4) : f.price.toFixed(2)) : "—"}
             </div>
