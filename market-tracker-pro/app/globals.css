@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Source+Code+Pro:wght@400;500;600&display=swap');
+
+body {
+  background: #0A0E17;
+  color: #E2E8F0;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0A0E17; }
+::-webkit-scrollbar-thumb { background: #1C2536; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #232D40; }
+
+/* Smooth transitions */
+* { transition: background-color 0.15s ease; }
