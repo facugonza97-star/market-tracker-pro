@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { fetchQuotes, fetchStockPriceChange } from "@/lib/fmp";
 import { TICKER_CONFIG } from "@/lib/config";
 
+export const dynamic = "force-dynamic";
+
 // Cache in memory
 let cache = { data: null, timestamp: 0 };
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
