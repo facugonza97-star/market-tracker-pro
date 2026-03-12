@@ -59,15 +59,15 @@ export default function YieldCurve({ treasury, full }) {
           <CartesianGrid strokeDasharray="3 3" stroke="#1C2536" />
           <XAxis
             dataKey="mat"
-            tick={{ fill: "#CBD5E0", fontSize: 13 }}
-            axisLine={false}
-            tickLine={false}
+            tick={{ fill: "#CBD5E0", fontSize: 12 }}
+            tickLine={{ stroke: "#CBD5E0" }}
+            axisLine={{ stroke: "#4A5568" }}
           />
           <YAxis
             domain={[minRate, maxRate]}
             tick={{ fill: "#CBD5E0", fontSize: 12 }}
-            axisLine={false}
-            tickLine={false}
+            tickLine={{ stroke: "#CBD5E0" }}
+            axisLine={{ stroke: "#4A5568" }}
             tickFormatter={(v) => v.toFixed(1) + "%"}
             width={50}
           />
