@@ -62,8 +62,8 @@ function parseSheetCSV(text) {
     const tipo = (cells[COL_TIPO] || "").replace(/"/g, "").trim().toUpperCase();
     if (tipo !== "LRMMN") continue;
 
-    const plazo = parseFloat((cells[COL_PLAZO] || "").replace(/"/g, ""));
-    const tasa = parseFloat((cells[COL_TASA] || "").replace(/"/g, ""));
+    const plazo = parseFloat((cells[COL_PLAZO] || "").replace(/"/g, "").replace(",", "."));
+    const tasa = parseFloat((cells[COL_TASA] || "").replace(/"/g, "").replace(",", "."));
     if (isNaN(plazo) || isNaN(tasa)) continue;
 
     const fecha = (cells[COL_FECHA] || "").replace(/"/g, "").trim();
