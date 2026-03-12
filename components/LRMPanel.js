@@ -1,13 +1,21 @@
 "use client";
 import { useState, useEffect } from "react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
-function CustomLabel({ x, y, value }) {
-  if (value === null || value === undefined) return null;
+function CustomTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
   return (
-    <text x={x} y={y - 12} fill="#ffffff" fontSize={13} fontWeight={600} textAnchor="middle">
-      {value.toFixed(2)}%
-    </text>
+    <div style={{
+      background: "#0F1520",
+      border: "1px solid #2A3A50",
+      borderRadius: 8,
+      padding: "8px 12px",
+    }}>
+      <div style={{ color: "#94A3B8", fontSize: 11, marginBottom: 2 }}>{label}</div>
+      <div style={{ color: "#ffffff", fontSize: 15, fontWeight: 600, fontFamily: "monospace" }}>
+        {payload[0].value.toFixed(2)}%
+      </div>
+    </div>
   );
 }
 
@@ -38,49 +46,39 @@ export default function LRMPanel() {
 
       {chartData.length > 0 ? (
         <>
-          <ResponsiveContainer width="100%" height={200} >
-            <AreaChart data={chartData} margin={{ top: 20, right: 10, left: 0, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="lrmGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.15} />
                   <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1C2536" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1E2D40" vertical={false} />
               <XAxis
                 dataKey="mat"
-                tick={{ fill: "#CBD5E0", fontSize: 12 }}
-                tickLine={{ stroke: "#CBD5E0" }}
-                axisLine={{ stroke: "#4A5568" }}
+                tick={{ fill: "#94A3B8", fontSize: 12 }}
+                tickLine={false}
+                axisLine={{ stroke: "#1E2D40" }}
               />
               <YAxis
                 domain={[minRate, maxRate]}
-                tick={{ fill: "#CBD5E0", fontSize: 12 }}
-                tickLine={{ stroke: "#CBD5E0" }}
-                axisLine={{ stroke: "#4A5568" }}
+                tick={{ fill: "#94A3B8", fontSize: 12 }}
+                tickLine={false}
+                axisLine={false}
                 tickFormatter={(v) => v.toFixed(1) + "%"}
                 width={50}
               />
-              <Tooltip
-                contentStyle={{
-                  background: "#0F1520",
-                  border: "1px solid #1C2536",
-                  borderRadius: 6,
-                  fontSize: 12,
-                }}
-                formatter={(v) => [v.toFixed(2) + "%", "Tasa"]}
-              />
+              <Tooltip content={<CustomTooltip />} cursor={{ stroke: "#F59E0B", strokeOpacity: 0.3 }} />
               <Area
                 type="monotone"
                 dataKey="rate"
                 stroke="#F59E0B"
                 strokeWidth={2}
                 fill="url(#lrmGrad)"
-                dot={{ r: 3, fill: "#F59E0B", strokeWidth: 0 }}
-                activeDot={{ r: 6 }}
-              >
-                <LabelList dataKey="rate" content={<CustomLabel />} />
-              </Area>
+                dot={{ r: 4, fill: "#F59E0B", strokeWidth: 0 }}
+                activeDot={{ r: 6, fill: "#F59E0B", stroke: "#ffffff", strokeWidth: 2 }}
+              />
             </AreaChart>
           </ResponsiveContainer>
           {lrm?.updatedAt && (
