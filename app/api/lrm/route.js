@@ -36,7 +36,17 @@ function parseCSVLine(line) {
 
 function parseSheetCSV(text) {
   const lines = text.split("\n").filter((l) => l.trim());
+  console.log("LRM CSV total lines:", lines.length);
+  console.log("LRM CSV line 0 (header):", lines[0]);
+  console.log("LRM CSV line 1:", lines[1] || "EMPTY");
+  console.log("LRM CSV line 2:", lines[2] || "EMPTY");
   if (lines.length < 2) return { curve: null, rows: [] };
+
+  // Log parsed cells for first 3 data rows
+  for (let k = 1; k <= 3 && k < lines.length; k++) {
+    const c = parseCSVLine(lines[k]);
+    console.log(`LRM row ${k} cells [0,3,6,7]:`, c[0], "|", c[3], "|", c[6], "|", c[7]);
+  }
 
   // Fixed column indices: A=0 TIPO, D=3 FECHA LIC, G=6 PLAZO, H=7 TASA CORTE
   const COL_TIPO = 0;
@@ -61,8 +71,9 @@ function parseSheetCSV(text) {
     rows.push({ tipo, fecha, plazo, tasa });
   }
 
+  console.log("LRM LRMMN rows before sort:", rows.length, "all:", JSON.stringify(rows));
   rows.sort((a, b) => (b.fecha > a.fecha ? 1 : -1));
-  console.log("LRM parsed rows:", rows.length, "first 3:", rows.slice(0, 3));
+  console.log("LRM rows after sort, first 5:", JSON.stringify(rows.slice(0, 5)));
 
   const curve = BUCKETS.map((bucket) => {
     const match = rows.find((r) => r.plazo >= bucket.min && r.plazo <= bucket.max);
@@ -73,7 +84,7 @@ function parseSheetCSV(text) {
       fecha: match ? match.fecha : null,
     };
   });
-  console.log("LRM curve:", curve);
+  console.log("LRM final curve:", JSON.stringify(curve));
 
   return { curve, rows };
 }
