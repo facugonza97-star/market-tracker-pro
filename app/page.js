@@ -69,6 +69,16 @@ export default function Home() {
             <YieldCurve treasury={treasury} />
             <LRMPanel />
           </div>
+          <div className="bg-card border border-border rounded-xl p-5">
+            <span className="text-[20px] font-semibold text-white block mb-4">S&P 500 Heatmap</span>
+            <iframe
+              src="https://finviz.com/map.ashx?t=sec&st=d1"
+              width="100%"
+              height="500"
+              style={{ border: "none" }}
+              title="Finviz S&P 500 Heatmap"
+            />
+          </div>
         </div>
       )}
 
