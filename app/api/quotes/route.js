@@ -2,6 +2,26 @@ import { NextResponse } from "next/server";
 import { fetchQuotes, fetchStockPriceChange } from "@/lib/fmp";
 import { TICKER_CONFIG, SUMMARY_TICKERS } from "@/lib/config";
 
+const TWELVE_KEY = process.env.TWELVE_API_KEY;
+
+async function fetchTwelveDataQuote(symbol) {
+  if (!TWELVE_KEY) return null;
+  try {
+    const res = await fetch(
+      `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(symbol)}&apikey=${TWELVE_KEY}`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.code) return null; // error response
+    return {
+      price: data.close ? parseFloat(data.close) : null,
+      d1: data.percent_change ? parseFloat(data.percent_change) : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export const dynamic = "force-dynamic";
 
 // Cache in memory
@@ -28,10 +48,12 @@ export async function GET() {
       if (!allTickers.includes(t)) allTickers.push(t);
     }
 
-    // Fetch quotes and price changes in parallel
-    const [quotes, priceChanges] = await Promise.all([
+    // Fetch quotes, price changes, and Twelve Data in parallel
+    const [quotes, priceChanges, twelveWTI, twelveDXY] = await Promise.all([
       fetchQuotes(allTickers),
       fetchStockPriceChange(allTickers),
+      fetchTwelveDataQuote("WTI/USD"),
+      fetchTwelveDataQuote("DXY"),
     ]);
 
     // Build lookup maps
@@ -80,6 +102,10 @@ export async function GET() {
         d1: pc["1D"] ?? q.changePercentage ?? null,
       };
     }
+
+    // Twelve Data quotes (WTI, DXY)
+    if (twelveWTI) summaryQuotes["WTI"] = twelveWTI;
+    if (twelveDXY) summaryQuotes["DXY"] = twelveDXY;
 
     const result = {
       sections,
