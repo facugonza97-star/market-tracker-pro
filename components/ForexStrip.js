@@ -28,6 +28,10 @@ export default function ForexStrip({ forex, full }) {
   if (full) {
     return (
       <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <p className="px-3 pt-3 pb-1 text-[11px] italic text-[#94A3B8] leading-relaxed">
+          Para pares USD/XXX: variación positiva indica apreciación del dólar.
+          Para pares XXX/USD (EUR, GBP, AUD): variación positiva indica depreciación del dólar.
+        </p>
         <table className="w-full">
           <thead>
             <tr style={{ backgroundColor: "#0d0d1a" }}>
