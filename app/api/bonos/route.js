@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const SHEET_ID = "19C_ncF_8YYpHXVg8FtGaT9HtTO3e3OeWCvmv9y0L8Kg";
+const SHEET_ID = "1hwrHz_hsLhZVdYvh6MWxzxMOsgVo1D08Ckk0rGnHQgA";
 const SHEETS = [
   "Uruguay USD",
   "Uruguay Pesos",
