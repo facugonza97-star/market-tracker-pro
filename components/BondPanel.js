@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from "recharts";
 
 const SECTION_CONFIG = {
@@ -41,30 +41,17 @@ function BondTooltip({ active, payload }) {
 export default function BondPanel() {
   const [sections, setSections] = useState(null);
   const [active, setActive] = useState(null);
-  const [parsing, setParsing] = useState(false);
-  const [error, setError] = useState(null);
-  const fileRef = useRef(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleFile = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setParsing(true);
-    setError(null);
-    try {
-      const formData = new FormData();
-      formData.append("pdf", file);
-      const res = await fetch("/api/parse-bonds", { method: "POST", body: formData });
-      if (!res.ok) throw new Error("Server error");
-      const result = await res.json();
-      setSections(result);
-      setActive(null);
-    } catch (err) {
-      console.error("PDF parse error:", err);
-      setError("Error al procesar el PDF. Intentá de nuevo.");
-    }
-    setParsing(false);
-    if (fileRef.current) fileRef.current.value = "";
-  };
+  useEffect(() => {
+    fetch("/api/bonos")
+      .then((r) => r.json())
+      .then((data) => {
+        setSections(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
   const sectionKeys = sections ? Object.keys(sections).filter((k) => sections[k].length > 0) : [];
   const activeData = active && sections?.[active] ? sections[active] : null;
@@ -76,27 +63,10 @@ export default function BondPanel() {
 
   return (
     <div className="px-6 py-5 space-y-5">
-      {/* Header with upload */}
-      <div className="flex items-center justify-between">
-        <span className="text-[20px] font-semibold text-white">Bonos</span>
-        <label className="bg-accent text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-accent/80 transition cursor-pointer">
-          📄 Subir PDF de Bonos
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".pdf"
-            className="hidden"
-            onChange={handleFile}
-          />
-        </label>
-      </div>
+      <span className="text-[20px] font-semibold text-white block">Bonos</span>
 
-      {parsing && (
-        <div className="text-center text-text-sec text-sm py-10">Procesando PDF...</div>
-      )}
-
-      {error && (
-        <div className="text-center text-neg text-sm py-4">{error}</div>
+      {loading && (
+        <div className="text-center text-text-sec text-sm py-10">Cargando datos de bonos...</div>
       )}
 
       {/* Issuer buttons */}
@@ -123,15 +93,9 @@ export default function BondPanel() {
         </div>
       )}
 
-      {!sections && !parsing && !error && (
+      {!loading && sectionKeys.length === 0 && (
         <div className="flex items-center justify-center h-40">
-          <div className="text-text-sec text-sm">Subí un PDF de bonos para ver las curvas de rendimiento.</div>
-        </div>
-      )}
-
-      {sections && sectionKeys.length === 0 && !parsing && (
-        <div className="flex items-center justify-center h-40">
-          <div className="text-text-sec text-sm">No se encontraron secciones de bonos en el PDF.</div>
+          <div className="text-text-sec text-sm">No hay datos de bonos disponibles.</div>
         </div>
       )}
 
