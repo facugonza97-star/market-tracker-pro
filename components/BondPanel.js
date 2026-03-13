@@ -79,11 +79,11 @@ export default function BondPanel() {
       const result = await res.json();
       console.log("[BondPanel] Sections received:", Object.keys(result));
       setSections(result);
-      setSource("pdf");
+      setSource("excel");
       setActive(null);
     } catch (err) {
       console.error("[BondPanel] Upload failed:", err.message, err);
-      setError(err.message || "Error al procesar el PDF");
+      setError(err.message || "Error al procesar el Excel");
     }
     setUploading(false);
     if (fileRef.current) fileRef.current.value = "";
@@ -105,16 +105,16 @@ export default function BondPanel() {
           <span className="text-[20px] font-semibold text-white">Bonos</span>
           {source && (
             <span className="text-[11px] text-text-dim ml-3">
-              {source === "pdf" ? "Datos del PDF" : "Datos de Google Sheets"}
+              {source === "excel" ? "Datos del Excel" : "Datos de Google Sheets"}
             </span>
           )}
         </div>
         <label className={`bg-accent text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-accent/80 transition cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
-          {uploading ? "Procesando..." : "\u{1F4C4} Subir PDF de Bonos"}
+          {uploading ? "Procesando..." : "\u{1F4CA} Subir Excel de Bonos"}
           <input
             ref={fileRef}
             type="file"
-            accept=".pdf"
+            accept=".xlsx,.xls"
             className="hidden"
             onChange={handleUpload}
             disabled={uploading}

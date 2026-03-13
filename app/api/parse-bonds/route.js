@@ -1,143 +1,117 @@
 import { NextResponse } from "next/server";
-import { extractText } from "unpdf";
+import * as XLSX from "xlsx";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Section markers in order of detection priority
-// Longer/more specific matches first to avoid false positives
-const SECTION_MARKERS = [
-  { match: "BONOS GLOBALES URUGUAY EN USD", key: "Uruguay USD" },
-  { match: "BONOS GLOBALES URUGUAY EN PESOS", key: "Uruguay Pesos" },
-  { match: "NOTAS EN UNIDADES INDEXADAS", key: "Notas UI" },
-  { match: "NOTAS EN PESOS URUGUAYOS", key: "Notas Pesos" },
-  { match: "BONOS SOBERANOS EEUU LINKEADOS", key: "US TIPS" },
-  { match: "LETRAS DEL TESORO EEUU", key: "T-bills" },
-  { match: "BONOS CUPON CERO EEUU", key: "Strips" },
-  { match: "BONOS CUPÓN CERO EEUU", key: "Strips" },
-  { match: "BONOS SOBERANOS EEUU", key: "US Treasuries" },
-  { match: "Curva PEMEX", key: "PEMEX" },
-  { match: "Curva PETROBRAS", key: "Petrobras" },
-  { match: "BONOS SOBERANOS BRASIL", key: "Brasil" },
-  { match: "Curva BRASIL", key: "Brasil" },
-  { match: "Curva Ecopetrol", key: "Ecopetrol" },
-  { match: "Curva Panama", key: "Panama" },
+const SHEETS = [
+  "Uruguay USD",
+  "Uruguay Pesos",
+  "Notas UI",
+  "Notas Pesos",
+  "US Treasuries",
+  "US TIPS",
+  "T-bills",
+  "Strips",
+  "PEMEX",
+  "Petrobras",
+  "Brasil",
+  "Ecopetrol",
+  "Panama",
 ];
 
-function parseNum(str) {
-  if (!str) return null;
-  const clean = str.replace(",", ".");
+function parseNum(val) {
+  if (val === null || val === undefined) return null;
+  if (typeof val === "number") return val;
+  const clean = String(val).trim().replace(",", ".");
   const n = parseFloat(clean);
   return isNaN(n) ? null : n;
 }
 
-function extractYear(dateStr) {
-  if (!dateStr) return null;
-  const parts = dateStr.split("/");
+function extractYear(val) {
+  if (!val) return null;
+  // If it's a Date object (Excel dates)
+  if (val instanceof Date) return val.getFullYear();
+  const str = String(val).trim();
+  // DD/MM/YYYY
+  const parts = str.split("/");
   if (parts.length === 3) {
     const y = parseInt(parts[2]);
     if (y > 2000) return y;
   }
-  return null;
+  // Try ISO or other formats
+  const match = str.match(/\b(20\d{2})\b/);
+  return match ? parseInt(match[1]) : null;
 }
 
-function parseBondText(text) {
-  // Step 1: Find all section positions in the text
-  const upperText = text.toUpperCase();
-  const sectionPositions = [];
+function formatDate(val) {
+  if (!val) return "";
+  if (val instanceof Date) {
+    const d = val.getDate().toString().padStart(2, "0");
+    const m = (val.getMonth() + 1).toString().padStart(2, "0");
+    return `${d}/${m}/${val.getFullYear()}`;
+  }
+  return String(val).trim();
+}
 
-  for (const marker of SECTION_MARKERS) {
-    const pos = upperText.indexOf(marker.match.toUpperCase());
-    if (pos !== -1) {
-      // Avoid duplicates for same key
-      if (!sectionPositions.find((s) => s.key === marker.key)) {
-        sectionPositions.push({ key: marker.key, pos });
-      }
-    }
+function parseSheet(worksheet) {
+  const rows = XLSX.utils.sheet_to_json(worksheet, { defval: null });
+  const bonds = [];
+
+  for (const row of rows) {
+    // Try different possible column names (case-insensitive matching)
+    const cupon = parseNum(row.CUPON ?? row.Cupon ?? row.cupon);
+    const vencRaw = row.VENCIMIENTO ?? row.Vencimiento ?? row.vencimiento;
+    const precio = parseNum(row.PRECIO ?? row.Precio ?? row.precio);
+    const tir = parseNum(row.TIR ?? row.Tir ?? row.tir ?? row["TIR %"] ?? row["TIR%"]);
+
+    const vencimiento = formatDate(vencRaw);
+    const year = extractYear(vencRaw);
+
+    if (tir === null || !year) continue;
+
+    bonds.push({ cupon, vencimiento, year, precio, tir });
   }
 
-  // Sort by position in text
-  sectionPositions.sort((a, b) => a.pos - b.pos);
-
-  console.log("[parse-bonds] Section positions:", sectionPositions.map((s) => `${s.key}@${s.pos}`).join(", "));
-
-  if (sectionPositions.length === 0) return {};
-
-  // Step 2: Split text into sections
-  const sections = {};
-  for (let i = 0; i < sectionPositions.length; i++) {
-    const start = sectionPositions[i].pos;
-    const end = i + 1 < sectionPositions.length ? sectionPositions[i + 1].pos : text.length;
-    const sectionText = text.substring(start, end);
-    const key = sectionPositions[i].key;
-
-    // Step 3: Extract bonds from section text using regex
-    // Pattern: number(cupon) date(DD/MM/YYYY) number(precio) [optional date(trade)] number(tir)
-    const bondRegex = /(\d+[,.]?\d*)\s+(\d{2}\/\d{2}\/\d{4})\s+(\d+[,.]?\d+)\s+(?:\d{2}\/\d{2}\/\d{4}\s+)?(\d+[,.]?\d+)/g;
-
-    const bonds = [];
-    let match;
-    while ((match = bondRegex.exec(sectionText)) !== null) {
-      const cupon = parseNum(match[1]);
-      const vencimiento = match[2];
-      const precio = parseNum(match[3]);
-      const tir = parseNum(match[4]);
-      const year = extractYear(vencimiento);
-
-      if (year && tir !== null) {
-        bonds.push({ cupon, vencimiento, year, precio, tir });
-      }
-    }
-
-    // Sort by year
-    bonds.sort((a, b) => a.year - b.year);
-    if (bonds.length > 0) {
-      sections[key] = bonds;
-    }
-
-    console.log(`[parse-bonds] Section "${key}": ${bonds.length} bonds found`);
-    if (bonds.length > 0) {
-      console.log(`[parse-bonds]   First: cupon=${bonds[0].cupon} venc=${bonds[0].vencimiento} precio=${bonds[0].precio} tir=${bonds[0].tir}`);
-      console.log(`[parse-bonds]   Last:  cupon=${bonds[bonds.length - 1].cupon} venc=${bonds[bonds.length - 1].vencimiento} precio=${bonds[bonds.length - 1].precio} tir=${bonds[bonds.length - 1].tir}`);
-    }
-  }
-
-  return sections;
+  bonds.sort((a, b) => a.year - b.year);
+  return bonds;
 }
 
 export async function POST(request) {
-  console.log("[parse-bonds] 1. POST request received");
+  console.log("[parse-bonds] POST received");
   try {
     const formData = await request.formData();
     const file = formData.get("file");
-    console.log("[parse-bonds] 2. File:", file ? `${file.name} (${file.size} bytes)` : "NULL");
+    console.log("[parse-bonds] File:", file ? `${file.name} (${file.size} bytes)` : "NULL");
     if (!file) {
-      return NextResponse.json({ error: "No PDF file provided" }, { status: 400 });
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    const arrayBuffer = await file.arrayBuffer();
-    const uint8 = new Uint8Array(arrayBuffer);
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true });
 
-    console.log("[parse-bonds] 3. Running unpdf...");
-    let text;
-    try {
-      const result = await extractText(uint8, { mergePages: true });
-      text = result.text;
-    } catch (pdfErr) {
-      console.error("[parse-bonds] unpdf ERROR:", pdfErr.message);
-      return NextResponse.json({ error: "unpdf failed: " + pdfErr.message }, { status: 500 });
+    console.log("[parse-bonds] Workbook sheets:", workbook.SheetNames.join(", "));
+
+    const sections = {};
+    for (const name of SHEETS) {
+      const ws = workbook.Sheets[name];
+      if (!ws) {
+        console.log(`[parse-bonds] Sheet "${name}": NOT FOUND`);
+        continue;
+      }
+      const bonds = parseSheet(ws);
+      console.log(`[parse-bonds] Sheet "${name}": ${bonds.length} bonds`);
+      if (bonds.length > 0) {
+        sections[name] = bonds;
+      }
     }
-    console.log("[parse-bonds] 4. Text extracted, length:", text.length);
-    console.log("[parse-bonds] 5. Sample:", text.substring(0, 1000));
-
-    const sections = parseBondText(text);
 
     const summary = Object.entries(sections).map(([k, v]) => `${k}: ${v.length}`).join(", ");
-    console.log("[parse-bonds] 6. Result:", summary || "NO SECTIONS");
+    console.log("[parse-bonds] Result:", summary || "NO DATA");
 
     return NextResponse.json(sections);
   } catch (error) {
-    console.error("[parse-bonds] UNHANDLED:", error.message, error.stack);
+    console.error("[parse-bonds] ERROR:", error.message, error.stack);
     return NextResponse.json({ error: "Failed: " + error.message }, { status: 500 });
   }
 }
