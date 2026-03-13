@@ -19,8 +19,11 @@ export async function GET() {
     if (!res.ok) throw new Error("Treasury fetch failed");
     const data = await res.json();
     const latest = Array.isArray(data) ? data[0] : data;
-    cache = { data: latest, timestamp: now };
-    return NextResponse.json(latest);
+    const prev = Array.isArray(data) && data.length > 1 ? data[1] : null;
+    const result = { ...latest };
+    if (prev) result._prev = prev;
+    cache = { data: result, timestamp: now };
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Treasury API error:", error);
     if (cache.data) return NextResponse.json(cache.data);

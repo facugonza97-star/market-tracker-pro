@@ -21,7 +21,9 @@ export default function SummaryCards({ quotes, treasury, macro }) {
   cards.push({ label: "NASDAQ", val: nq?.price, chg: nq?.d1, fmt: "price" });
 
   const y10 = treasury?.year10 ? parseFloat(treasury.year10) : null;
-  cards.push({ label: "US 10Y Yield", val: y10, chg: null, fmt: "yield" });
+  const y10prev = treasury?._prev?.year10 ? parseFloat(treasury._prev.year10) : null;
+  const y10bps = y10 !== null && y10prev !== null ? Math.round((y10 - y10prev) * 100) : null;
+  cards.push({ label: "US 10Y Yield", val: y10, chg: null, fmt: "yield", bps: y10bps });
 
   const vix = findTicker("^VIX");
   cards.push({ label: "VIX", val: vix?.price, chg: vix?.d1, fmt: "decimal" });
@@ -62,6 +64,11 @@ export default function SummaryCards({ quotes, treasury, macro }) {
           {c.chg !== null && c.chg !== undefined && (
             <div className={`text-xs font-semibold mt-0.5 ${c.chg >= 0 ? "text-pos" : "text-neg"}`}>
               {c.chg >= 0 ? "+" : ""}{parseFloat(c.chg).toFixed(1)}%
+            </div>
+          )}
+          {c.bps !== null && c.bps !== undefined && (
+            <div className={`text-xs font-semibold mt-0.5 ${c.bps >= 0 ? "text-pos" : "text-neg"}`}>
+              {c.bps >= 0 ? "+" : ""}{c.bps} bps
             </div>
           )}
           {c.sub && (
