@@ -533,6 +533,7 @@ export default function BondPanel() {
             <table style={{ borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ backgroundColor: "#0d0d1a" }}>
+                  <th className="py-2 px-4 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide whitespace-nowrap">Emisor</th>
                   <th className="py-2 px-4 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide whitespace-nowrap">Cupón</th>
                   <th className="py-2 px-4 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide whitespace-nowrap">Vencimiento</th>
                   <th className="py-2 px-4 text-right text-xs font-bold text-[#94A3B8] uppercase tracking-wide whitespace-nowrap">Precio</th>
@@ -543,6 +544,7 @@ export default function BondPanel() {
               <tbody>
                 {activeData.map((b, i) => (
                   <tr key={i} className={`border-b border-border ${i % 2 === 0 ? "" : "bg-white/[0.01]"}`}>
+                    <td className="px-4 py-2 text-sm text-white whitespace-nowrap">{b.emisor ?? "\u2014"}</td>
                     <td className="px-4 py-2 text-sm text-white font-mono whitespace-nowrap">{b.cupon !== null ? b.cupon.toFixed(3) + "%" : "\u2014"}</td>
                     <td className="px-4 py-2 text-sm text-white whitespace-nowrap">{b.vencimiento}</td>
                     <td className="px-4 py-2 text-right text-sm text-white font-mono whitespace-nowrap">{b.precio?.toFixed(2) ?? "\u2014"}</td>

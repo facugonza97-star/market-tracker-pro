@@ -102,6 +102,7 @@ function processForFrontend(parsedData) {
 
     const bonds = [];
     for (const row of rows) {
+      const emisor = (row.EMISOR ?? row.Emisor ?? row.emisor ?? "").toString().trim() || null;
       const cupon = parseNum(row.CUPON ?? row.Cupon ?? row.cupon);
       const vencRaw = row.VENCIMIENTO ?? row.Vencimiento ?? row.vencimiento;
       const precio = parseNum(row.PRECIO ?? row.Precio ?? row.precio);
@@ -110,7 +111,7 @@ function processForFrontend(parsedData) {
       const year = extractYear(vencRaw);
 
       if (tir === null || !year) continue;
-      bonds.push({ cupon, vencimiento, year, precio, tir });
+      bonds.push({ emisor, cupon, vencimiento, year, precio, tir });
     }
 
     bonds.sort((a, b) => a.year - b.year);

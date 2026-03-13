@@ -73,6 +73,7 @@ function parseSheet(text) {
     const cells = parseCSVLine(lines[i]);
     if (cells.length < 5) continue;
 
+    const emisor = (cells[0] || "").replace(/"/g, "").trim();
     const cupon = parseNum(cells[1]);
     const vencimiento = (cells[2] || "").replace(/"/g, "").trim();
     const precio = parseNum(cells[3]);
@@ -81,7 +82,7 @@ function parseSheet(text) {
 
     if (tir === null || !year) continue;
 
-    rows.push({ cupon, vencimiento, year, precio, tir });
+    rows.push({ emisor: emisor || null, cupon, vencimiento, year, precio, tir });
   }
 
   rows.sort((a, b) => a.year - b.year);
