@@ -143,29 +143,40 @@ function parseBondText(text) {
 }
 
 export async function POST(request) {
+  console.log("[parse-bonds] 1. POST request received");
   try {
+    console.log("[parse-bonds] 2. Parsing FormData...");
     const formData = await request.formData();
     const file = formData.get("file");
+    console.log("[parse-bonds] 3. File from FormData:", file ? `name=${file.name}, size=${file.size}, type=${file.type}` : "NULL");
     if (!file) {
       return NextResponse.json({ error: "No PDF file provided" }, { status: 400 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const pdfData = await pdfParse(buffer);
-    const text = pdfData.text;
+    console.log("[parse-bonds] 4. Converting to Buffer...");
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    console.log("[parse-bonds] 5. Buffer size:", buffer.length, "bytes");
 
-    console.log("PDF parsed, text length:", text.length, "pages:", pdfData.numpages);
-
-    const sections = parseBondText(text);
-
-    // Log section counts
-    for (const [k, v] of Object.entries(sections)) {
-      console.log(`Section "${k}": ${v.length} bonds`);
+    console.log("[parse-bonds] 6. Running pdf-parse...");
+    let pdfData;
+    try {
+      pdfData = await pdfParse(buffer);
+    } catch (pdfErr) {
+      console.error("[parse-bonds] ERROR in pdf-parse:", pdfErr.message, pdfErr.stack);
+      return NextResponse.json({ error: "pdf-parse failed: " + pdfErr.message }, { status: 500 });
     }
+    console.log("[parse-bonds] 7. pdf-parse OK. Pages:", pdfData.numpages, "Text length:", pdfData.text.length);
+    console.log("[parse-bonds] 8. First 500 chars of text:", pdfData.text.substring(0, 500));
+
+    const sections = parseBondText(pdfData.text);
+
+    const sectionSummary = Object.entries(sections).map(([k, v]) => `${k}: ${v.length}`).join(", ");
+    console.log("[parse-bonds] 9. Sections found:", sectionSummary || "NONE");
 
     return NextResponse.json(sections);
   } catch (error) {
-    console.error("Parse bonds error:", error);
+    console.error("[parse-bonds] UNHANDLED ERROR:", error.message, error.stack);
     return NextResponse.json({ error: "Failed to parse PDF: " + error.message }, { status: 500 });
   }
 }
