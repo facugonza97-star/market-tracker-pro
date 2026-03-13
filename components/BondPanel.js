@@ -61,23 +61,28 @@ export default function BondPanel() {
 
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
+    console.log("[BondPanel] handleUpload triggered, file:", file ? `${file.name} (${file.size} bytes, ${file.type})` : "NONE");
     if (!file) return;
     setUploading(true);
     setError(null);
     try {
       const formData = new FormData();
       formData.append("file", file);
+      console.log("[BondPanel] Sending POST to /api/parse-bonds...");
       const res = await fetch("/api/parse-bonds", { method: "POST", body: formData });
+      console.log("[BondPanel] Response status:", res.status);
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Error del servidor");
+        const errBody = await res.text();
+        console.error("[BondPanel] Server error response:", errBody);
+        throw new Error(errBody || `Server error ${res.status}`);
       }
       const result = await res.json();
+      console.log("[BondPanel] Sections received:", Object.keys(result));
       setSections(result);
       setSource("pdf");
       setActive(null);
     } catch (err) {
-      console.error("PDF upload error:", err);
+      console.error("[BondPanel] Upload failed:", err.message, err);
       setError(err.message || "Error al procesar el PDF");
     }
     setUploading(false);
