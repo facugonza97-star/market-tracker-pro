@@ -319,19 +319,19 @@ export default function BondPanel() {
             <table className="w-full">
               <thead>
                 <tr style={{ backgroundColor: "#0d0d1a" }}>
-                  <th className="px-3 py-2.5 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "15%" }}>Cupon</th>
-                  <th className="px-3 py-2.5 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide">Vencimiento</th>
-                  <th className="px-3 py-2.5 text-right text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "15%" }}>Precio</th>
-                  <th className="px-3 py-2.5 text-right text-xs font-bold text-[#94A3B8] uppercase tracking-wide">TIR</th>
+                  <th className="py-2 px-2 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: 80 }}>Cupon</th>
+                  <th className="py-2 px-2 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: 120 }}>Vencimiento</th>
+                  <th className="py-2 px-2 text-right text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: 100 }}>Precio</th>
+                  <th className="py-2 px-2 text-right text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: 80 }}>TIR</th>
                 </tr>
               </thead>
               <tbody>
                 {activeData.map((b, i) => (
                   <tr key={i} className={`border-b border-border ${i % 2 === 0 ? "" : "bg-white/[0.01]"}`}>
-                    <td className="px-3 py-2 text-sm text-white font-mono">{b.cupon !== null ? b.cupon.toFixed(3) + "%" : "\u2014"}</td>
-                    <td className="px-3 py-2 text-sm text-white">{b.vencimiento}</td>
-                    <td className="px-3 py-2 text-right text-sm text-white font-mono">{b.precio?.toFixed(2) ?? "\u2014"}</td>
-                    <td className="px-3 py-2 text-right text-sm font-semibold font-mono" style={{ color: activeConfig.color }}>
+                    <td className="px-2 py-1.5 text-sm text-white font-mono">{b.cupon !== null ? b.cupon.toFixed(3) + "%" : "\u2014"}</td>
+                    <td className="px-2 py-1.5 text-sm text-white">{b.vencimiento}</td>
+                    <td className="px-2 py-1.5 text-right text-sm text-white font-mono">{b.precio?.toFixed(2) ?? "\u2014"}</td>
+                    <td className="px-2 py-1.5 text-right text-sm font-semibold font-mono" style={{ color: activeConfig.color }}>
                       {b.tir.toFixed(2)}%
                     </td>
                   </tr>
