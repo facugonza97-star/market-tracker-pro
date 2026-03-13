@@ -168,7 +168,9 @@ export async function POST(request) {
       return NextResponse.json({ error: "unpdf failed: " + pdfErr.message }, { status: 500 });
     }
     console.log("[parse-bonds] 7. unpdf OK. Text length:", text.length);
-    console.log("[parse-bonds] 8. First 500 chars of text:", text.substring(0, 500));
+    console.log("[parse-bonds] 8. PDF TEXT SAMPLE (first 2000 chars):", text.substring(0, 2000));
+    console.log("[parse-bonds] 8b. PDF TEXT SAMPLE (2000-4000):", text.substring(2000, 4000));
+    console.log("[parse-bonds] 8c. PDF TEXT SAMPLE (4000-6000):", text.substring(4000, 6000));
 
     const sections = parseBondText(text);
 
