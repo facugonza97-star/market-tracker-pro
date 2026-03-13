@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import pdfParse from "pdf-parse";
+import { extractText } from "unpdf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -153,23 +153,24 @@ export async function POST(request) {
       return NextResponse.json({ error: "No PDF file provided" }, { status: 400 });
     }
 
-    console.log("[parse-bonds] 4. Converting to Buffer...");
+    console.log("[parse-bonds] 4. Converting to Uint8Array...");
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    console.log("[parse-bonds] 5. Buffer size:", buffer.length, "bytes");
+    const uint8 = new Uint8Array(arrayBuffer);
+    console.log("[parse-bonds] 5. Buffer size:", uint8.length, "bytes");
 
-    console.log("[parse-bonds] 6. Running pdf-parse...");
-    let pdfData;
+    console.log("[parse-bonds] 6. Running unpdf extractText...");
+    let text;
     try {
-      pdfData = await pdfParse(buffer);
+      const result = await extractText(uint8, { mergePages: true });
+      text = result.text;
     } catch (pdfErr) {
-      console.error("[parse-bonds] ERROR in pdf-parse:", pdfErr.message, pdfErr.stack);
-      return NextResponse.json({ error: "pdf-parse failed: " + pdfErr.message }, { status: 500 });
+      console.error("[parse-bonds] ERROR in unpdf:", pdfErr.message, pdfErr.stack);
+      return NextResponse.json({ error: "unpdf failed: " + pdfErr.message }, { status: 500 });
     }
-    console.log("[parse-bonds] 7. pdf-parse OK. Pages:", pdfData.numpages, "Text length:", pdfData.text.length);
-    console.log("[parse-bonds] 8. First 500 chars of text:", pdfData.text.substring(0, 500));
+    console.log("[parse-bonds] 7. unpdf OK. Text length:", text.length);
+    console.log("[parse-bonds] 8. First 500 chars of text:", text.substring(0, 500));
 
-    const sections = parseBondText(pdfData.text);
+    const sections = parseBondText(text);
 
     const sectionSummary = Object.entries(sections).map(([k, v]) => `${k}: ${v.length}`).join(", ");
     console.log("[parse-bonds] 9. Sections found:", sectionSummary || "NONE");
