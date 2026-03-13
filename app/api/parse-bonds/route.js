@@ -46,6 +46,21 @@ async function saveToGoogleSheet(parsedData) {
       requestBody: { values: rows },
     });
   }
+
+  // Write timestamp to Uruguay USD!G1
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, "0");
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mi = String(now.getMinutes()).padStart(2, "0");
+  const timestamp = `${dd}/${mm}/${now.getFullYear()} ${hh}:${mi}`;
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SHEET_ID,
+    range: "'Uruguay USD'!G1",
+    valueInputOption: "RAW",
+    requestBody: { values: [[timestamp]] },
+  });
 }
 
 function parseNum(val) {

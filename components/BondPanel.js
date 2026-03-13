@@ -70,9 +70,14 @@ export default function BondPanel() {
   const [uploading, setUploading] = useState(false);
   const [source, setSource] = useState(null);
   const [error, setError] = useState(null);
+  const [lastUpdate, setLastUpdate] = useState(null);
   const fileRef = useRef(null);
 
   useEffect(() => {
+    fetch("/api/bonos-timestamp")
+      .then((r) => r.json())
+      .then((data) => { if (data.lastUpdate) setLastUpdate(data.lastUpdate); })
+      .catch(() => {});
     fetch("/api/bonos")
       .then((r) => r.json())
       .then((data) => {
@@ -101,6 +106,8 @@ export default function BondPanel() {
       setSource("excel");
       setActive(null);
       setCompare(null);
+      // Refresh timestamp
+      fetch("/api/bonos-timestamp").then((r) => r.json()).then((d) => { if (d.lastUpdate) setLastUpdate(d.lastUpdate); }).catch(() => {});
     } catch (err) {
       setError(err.message || "Error al procesar el Excel");
     }
@@ -148,11 +155,6 @@ export default function BondPanel() {
       <div className="flex items-center justify-between">
         <div>
           <span className="text-[20px] font-semibold text-white">Bonos</span>
-          {source && (
-            <span className="text-[11px] text-text-dim ml-3">
-              {source === "excel" ? "Datos del Excel" : "Datos de Google Sheets"}
-            </span>
-          )}
         </div>
         <label className={`bg-accent text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-accent/80 transition cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
           {uploading ? "Procesando..." : "\u{1F4CA} Subir Excel de Bonos"}
@@ -166,6 +168,12 @@ export default function BondPanel() {
           />
         </label>
       </div>
+
+      {lastUpdate && (
+        <div className="text-sm text-white">
+          Última actualización precios bonos: {lastUpdate}
+        </div>
+      )}
 
       {error && (
         <div className="text-center text-neg text-sm py-2">{error}</div>
