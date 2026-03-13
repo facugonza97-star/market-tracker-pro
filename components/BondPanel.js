@@ -18,6 +18,143 @@ const SECTION_CONFIG = {
   "Panama": { label: "\u{1F1F5}\u{1F1E6} Panama", color: "#C084FC" },
 };
 
+// --- TIR Calculator (ICMA Actual/Actual, semiannual coupons) ---
+
+function parseFecha(str) {
+  if (!str) return null;
+  const parts = str.trim().split("/");
+  if (parts.length !== 3) return null;
+  const d = parseInt(parts[0]);
+  const m = parseInt(parts[1]) - 1;
+  const y = parseInt(parts[2]);
+  if (isNaN(d) || isNaN(m) || isNaN(y)) return null;
+  return new Date(y, m, d);
+}
+
+function getCouponDates(vencimiento, cuponAnual) {
+  if (!vencimiento || cuponAnual === null || cuponAnual === 0) return [];
+  const today = new Date();
+  const dates = [];
+  let d = new Date(vencimiento);
+  while (d > today) {
+    dates.unshift(new Date(d));
+    d.setMonth(d.getMonth() - 6);
+  }
+  return dates;
+}
+
+function calcularTIR(precioLimpio, cuponAnual, vencimientoStr) {
+  const venc = parseFecha(vencimientoStr);
+  if (!venc || precioLimpio === null || precioLimpio <= 0) return null;
+  if (cuponAnual === null || cuponAnual === 0) {
+    // Zero coupon: TIR = (100/P)^(1/t) - 1
+    const today = new Date();
+    const t = (venc - today) / (365.25 * 86400000);
+    if (t <= 0) return null;
+    return (Math.pow(100 / precioLimpio, 1 / t) - 1) * 100;
+  }
+
+  const couponDates = getCouponDates(venc, cuponAnual);
+  if (couponDates.length === 0) return null;
+
+  const semiCoupon = cuponAnual / 2;
+  const today = new Date();
+
+  function pvAtRate(r) {
+    const semi = r / 2;
+    let pv = 0;
+    for (let i = 0; i < couponDates.length; i++) {
+      const t = (couponDates[i] - today) / (365.25 * 86400000 / 2); // periods
+      const cf = i === couponDates.length - 1 ? semiCoupon + 100 : semiCoupon;
+      pv += cf / Math.pow(1 + semi, t);
+    }
+    return pv;
+  }
+
+  // Bisection method
+  let lo = -0.05, hi = 1.0;
+  for (let iter = 0; iter < 200; iter++) {
+    const mid = (lo + hi) / 2;
+    const pv = pvAtRate(mid);
+    if (Math.abs(pv - precioLimpio) < 0.0001) return mid * 100;
+    if (pv > precioLimpio) lo = mid;
+    else hi = mid;
+  }
+  return ((lo + hi) / 2) * 100;
+}
+
+// --- TIR Modal ---
+
+function TIRModal({ bond, onClose }) {
+  const [precio, setPrecio] = useState(bond.precio !== null ? bond.precio.toString() : "");
+  const precioNum = parseFloat(precio.replace(",", "."));
+  const tirResult = !isNaN(precioNum) && precioNum > 0
+    ? calcularTIR(precioNum, bond.cupon, bond.vencimiento)
+    : null;
+
+  return (
+    <div
+      style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        background: "rgba(0,0,0,0.6)", display: "flex",
+        alignItems: "center", justifyContent: "center",
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: "#0F1520", border: "1px solid #2A3A50",
+          borderRadius: 12, padding: "24px 28px", minWidth: 320, maxWidth: 400,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ color: "#94A3B8", fontSize: 12, marginBottom: 4 }}>Calculadora TIR</div>
+        <div style={{ color: "#fff", fontSize: 16, fontWeight: 600, marginBottom: 16 }}>
+          {bond.cupon !== null ? `Cupón ${bond.cupon.toFixed(3)}%` : "Zero Coupon"} — Venc. {bond.vencimiento}
+        </div>
+
+        <label style={{ color: "#94A3B8", fontSize: 12 }}>Precio limpio</label>
+        <input
+          type="text"
+          value={precio}
+          onChange={(e) => setPrecio(e.target.value)}
+          placeholder="Ej: 95.50"
+          autoFocus
+          style={{
+            display: "block", width: "100%", marginTop: 4, marginBottom: 16,
+            background: "#1A2332", border: "1px solid #2A3A50", borderRadius: 8,
+            padding: "8px 12px", color: "#fff", fontSize: 16, fontFamily: "monospace",
+            outline: "none",
+          }}
+        />
+
+        <div style={{
+          background: "#1A2332", borderRadius: 8, padding: "12px 16px",
+          marginBottom: 16, textAlign: "center",
+        }}>
+          <div style={{ color: "#94A3B8", fontSize: 11, marginBottom: 4 }}>TIR (ICMA Actual/Actual)</div>
+          <div style={{ color: "#fff", fontSize: 28, fontWeight: 700, fontFamily: "monospace" }}>
+            {tirResult !== null ? tirResult.toFixed(3) + "%" : "\u2014"}
+          </div>
+        </div>
+
+        <button
+          onClick={onClose}
+          style={{
+            width: "100%", padding: "8px 0", background: "#2A3A50",
+            border: "none", borderRadius: 8, color: "#CBD5E0",
+            fontSize: 14, fontWeight: 600, cursor: "pointer",
+          }}
+        >
+          Cerrar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// --- Tooltips ---
+
 function CompareTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   return (
@@ -62,6 +199,8 @@ function SingleTooltip({ active, payload }) {
   );
 }
 
+// --- Main Component ---
+
 export default function BondPanel() {
   const [sections, setSections] = useState(null);
   const [active, setActive] = useState(null);
@@ -71,6 +210,7 @@ export default function BondPanel() {
   const [source, setSource] = useState(null);
   const [error, setError] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [tirBond, setTirBond] = useState(null);
   const fileRef = useRef(null);
 
   useEffect(() => {
@@ -126,7 +266,6 @@ export default function BondPanel() {
   let chartData, allRates;
 
   if (isComparing) {
-    // Merge both datasets by year
     const yearMap = {};
     for (const b of activeData) {
       if (!yearMap[b.year]) yearMap[b.year] = { year: b.year };
@@ -151,6 +290,9 @@ export default function BondPanel() {
 
   return (
     <div className="px-6 py-5 space-y-5">
+      {/* TIR Calculator Modal */}
+      {tirBond && <TIRModal bond={tirBond} onClose={() => setTirBond(null)} />}
+
       {/* Header with upload */}
       <div className="flex items-center justify-between">
         <div>
@@ -327,10 +469,11 @@ export default function BondPanel() {
             <table className="w-full" style={{ tableLayout: "fixed" }}>
               <thead>
                 <tr style={{ backgroundColor: "#0d0d1a" }}>
-                  <th className="py-2 px-2 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "25%" }}>Cupon</th>
-                  <th className="py-2 px-2 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "25%" }}>Vencimiento</th>
-                  <th className="py-2 px-2 text-right text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "25%" }}>Precio</th>
-                  <th className="py-2 px-2 text-right text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "25%" }}>TIR</th>
+                  <th className="py-2 px-2 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "22%" }}>Cupón</th>
+                  <th className="py-2 px-2 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "22%" }}>Vencimiento</th>
+                  <th className="py-2 px-2 text-right text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "18%" }}>Precio</th>
+                  <th className="py-2 px-2 text-right text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "14%" }}>TIR</th>
+                  <th className="py-2 px-2 text-center text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "24%" }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -341,6 +484,14 @@ export default function BondPanel() {
                     <td className="px-2 py-1.5 text-right text-sm text-white font-mono">{b.precio?.toFixed(2) ?? "\u2014"}</td>
                     <td className="px-2 py-1.5 text-right text-sm font-semibold font-mono" style={{ color: activeConfig.color }}>
                       {b.tir.toFixed(2)}%
+                    </td>
+                    <td className="px-2 py-1.5 text-center">
+                      <button
+                        onClick={() => setTirBond(b)}
+                        className="px-3 py-1 rounded-md text-xs font-semibold bg-white/5 border border-white/10 text-text-sec hover:text-white hover:border-white/20 transition"
+                      >
+                        Calc TIR
+                      </button>
                     </td>
                   </tr>
                 ))}
