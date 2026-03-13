@@ -7,9 +7,10 @@ import YieldCurve from "@/components/YieldCurve";
 import NewsPanel from "@/components/NewsPanel";
 import LRMPanel from "@/components/LRMPanel";
 import EconCalendar from "@/components/EconCalendar";
+import BondPanel from "@/components/BondPanel";
 import Header from "@/components/Header";
 
-const TABS = ["Overview", "Tracker", "Curves", "Forex", "Watchlist"];
+const TABS = ["Overview", "Tracker", "Bonos", "Forex", "Watchlist"];
 
 export default function Home() {
   const [tab, setTab] = useState("Overview");
@@ -84,10 +85,8 @@ export default function Home() {
         </div>
       )}
 
-      {!loading && tab === "Curves" && (
-        <div className="px-6 py-5">
-          <YieldCurve treasury={treasury} full />
-        </div>
+      {!loading && tab === "Bonos" && (
+        <BondPanel />
       )}
 
       {!loading && tab === "Forex" && (
