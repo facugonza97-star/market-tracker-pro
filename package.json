@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "next": "14.2.15",
-    "pdfjs-dist": "^5.5.207",
+    "pdf-parse": "^2.4.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.13.3"

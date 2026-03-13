@@ -2,165 +2,21 @@
 import { useState, useRef } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from "recharts";
 
-const SECTION_MAP = {
-  "BONOS GLOBALES URUGUAY EN USD": { label: "\u{1F1FA}\u{1F1FE} Uruguay USD", color: "#5B8DEF" },
-  "BONOS GLOBALES URUGUAY EN PESOS": { label: "\u{1F1FA}\u{1F1FE} Uruguay Pesos", color: "#5B8DEF" },
-  "NOTAS EN UNIDADES INDEXADAS": { label: "\u{1F1FA}\u{1F1FE} Notas UI", color: "#5B8DEF" },
-  "NOTAS EN PESOS URUGUAYOS": { label: "\u{1F1FA}\u{1F1FE} Notas Pesos", color: "#5B8DEF" },
-  "BONOS SOBERANOS EEUU": { label: "\u{1F1FA}\u{1F1F8} US Treasuries", color: "#34D399" },
+const SECTION_CONFIG = {
+  "Uruguay USD": { label: "\u{1F1FA}\u{1F1FE} Uruguay USD", color: "#5B8DEF" },
+  "Uruguay Pesos": { label: "\u{1F1FA}\u{1F1FE} Uruguay Pesos", color: "#5B8DEF" },
+  "Notas UI": { label: "\u{1F1FA}\u{1F1FE} Notas UI", color: "#5B8DEF" },
+  "Notas Pesos": { label: "\u{1F1FA}\u{1F1FE} Notas Pesos", color: "#5B8DEF" },
+  "US Treasuries": { label: "\u{1F1FA}\u{1F1F8} US Treasuries", color: "#34D399" },
   "US TIPS": { label: "\u{1F1FA}\u{1F1F8} US TIPS", color: "#34D399" },
-  "LETRAS DEL TESORO EEUU": { label: "\u{1F1FA}\u{1F1F8} T-bills", color: "#34D399" },
-  "BONOS CUP\u00D3N CERO EEUU": { label: "\u{1F1FA}\u{1F1F8} Strips", color: "#34D399" },
-  "CURVA PEMEX": { label: "\u{1F1F2}\u{1F1FD} PEMEX", color: "#F59E0B" },
-  "CURVA PETROBRAS": { label: "\u{1F1E7}\u{1F1F7} Petrobras", color: "#FBBF24" },
-  "BONOS SOBERANOS BRASIL": { label: "\u{1F1E7}\u{1F1F7} Brasil", color: "#FBBF24" },
-  "CURVA ECOPETROL": { label: "\u{1F1E8}\u{1F1F4} Ecopetrol", color: "#EF4444" },
-  "CURVA PANAMA": { label: "\u{1F1F5}\u{1F1E6} Panama", color: "#A78BFA" },
+  "T-bills": { label: "\u{1F1FA}\u{1F1F8} T-bills", color: "#34D399" },
+  "Strips": { label: "\u{1F1FA}\u{1F1F8} Strips", color: "#34D399" },
+  "PEMEX": { label: "\u{1F1F2}\u{1F1FD} PEMEX", color: "#F59E0B" },
+  "Petrobras": { label: "\u{1F1E7}\u{1F1F7} Petrobras", color: "#FBBF24" },
+  "Brasil": { label: "\u{1F1E7}\u{1F1F7} Brasil", color: "#FBBF24" },
+  "Ecopetrol": { label: "\u{1F1E8}\u{1F1F4} Ecopetrol", color: "#EF4444" },
+  "Panama": { label: "\u{1F1F5}\u{1F1E6} Panama", color: "#A78BFA" },
 };
-
-function normalizeKey(text) {
-  return text.toUpperCase().replace(/[^A-Z\u00C0-\u00FF\s]/g, "").trim();
-}
-
-function findSectionKey(text) {
-  const norm = normalizeKey(text);
-  for (const key of Object.keys(SECTION_MAP)) {
-    if (norm.includes(key)) return key;
-  }
-  return null;
-}
-
-function parseEuropeanNum(str) {
-  if (!str) return null;
-  const clean = str.replace(/"/g, "").trim().replace(",", ".");
-  const n = parseFloat(clean);
-  return isNaN(n) ? null : n;
-}
-
-function parseDate(str) {
-  if (!str) return null;
-  const clean = str.replace(/"/g, "").trim();
-  // Try DD/MM/YYYY
-  const parts = clean.split("/");
-  if (parts.length === 3) {
-    const [d, m, y] = parts.map(Number);
-    if (y > 2000) return new Date(y, m - 1, d);
-  }
-  // Fallback
-  const d = new Date(clean);
-  return isNaN(d.getTime()) ? null : d;
-}
-
-function extractYear(str) {
-  const d = parseDate(str);
-  if (d) return d.getFullYear();
-  // Try to find a 4-digit year
-  const match = str.match(/\b(20\d{2})\b/);
-  return match ? parseInt(match[1]) : null;
-}
-
-async function parsePDF(file) {
-  const pdfjsLib = await import("pdfjs-dist");
-  pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-
-  const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-
-  let allLines = [];
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-
-    // Group items by Y position into lines
-    const lineMap = {};
-    for (const item of content.items) {
-      const y = Math.round(item.transform[5]);
-      if (!lineMap[y]) lineMap[y] = [];
-      lineMap[y].push({ x: item.transform[4], text: item.str });
-    }
-
-    // Sort lines by Y (top to bottom = descending Y)
-    const sortedYs = Object.keys(lineMap).map(Number).sort((a, b) => b - a);
-    for (const y of sortedYs) {
-      const items = lineMap[y].sort((a, b) => a.x - b.x);
-      const lineText = items.map((it) => it.text).join(" ").trim();
-      if (lineText) allLines.push({ text: lineText, items });
-    }
-  }
-
-  // DEBUG: log raw extracted text
-  console.log("=== PDF RAW TEXT START ===");
-  allLines.forEach((line, idx) => {
-    console.log(`LINE ${idx}: [${line.items.length} items] ${line.text}`);
-  });
-  console.log("=== PDF RAW TEXT END ===");
-  console.log("Total lines extracted:", allLines.length);
-
-  // Parse sections
-  const sections = {};
-  let currentSection = null;
-
-  for (const line of allLines) {
-    const sectionKey = findSectionKey(line.text);
-    if (sectionKey) {
-      currentSection = sectionKey;
-      if (!sections[currentSection]) sections[currentSection] = [];
-      continue;
-    }
-
-    if (!currentSection) continue;
-
-    // Try to parse bond data from this line
-    // Look for patterns: cupon number, date, price number, TIR number
-    const tokens = line.items.map((it) => it.text.trim()).filter(Boolean);
-    if (tokens.length < 3) continue;
-
-    // Find numeric tokens and date tokens
-    const numericTokens = [];
-    let dateToken = null;
-
-    for (const t of tokens) {
-      // Check if date
-      if (/\d{1,2}\/\d{1,2}\/\d{4}/.test(t) || /\d{4}-\d{2}-\d{2}/.test(t)) {
-        dateToken = t;
-      } else {
-        const n = parseEuropeanNum(t);
-        if (n !== null) numericTokens.push({ text: t, val: n });
-      }
-    }
-
-    // We need at least a date and some numbers to form a bond row
-    if (!dateToken || numericTokens.length < 2) continue;
-
-    // Skip header-like rows
-    if (line.text.toUpperCase().includes("CUPON") || line.text.toUpperCase().includes("VENCIMIENTO")) continue;
-    // Skip rows that look like section headers
-    if (findSectionKey(line.text)) continue;
-
-    // Heuristic: cupon is usually first number, precio and TIR are last two
-    const cupon = numericTokens.length >= 3 ? numericTokens[0].val : null;
-    const precio = numericTokens.length >= 3 ? numericTokens[numericTokens.length - 2].val : numericTokens[0].val;
-    const tir = numericTokens[numericTokens.length - 1].val;
-
-    const year = extractYear(dateToken);
-    if (!year || !tir) continue;
-
-    sections[currentSection].push({
-      cupon,
-      vencimiento: dateToken,
-      year,
-      precio,
-      tir,
-    });
-  }
-
-  // Sort each section by year
-  for (const key of Object.keys(sections)) {
-    sections[key].sort((a, b) => a.year - b.year);
-  }
-
-  return sections;
-}
 
 function BondTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
@@ -174,7 +30,7 @@ function BondTooltip({ active, payload }) {
     }}>
       <div style={{ color: "#94A3B8", fontSize: 11, marginBottom: 4 }}>Vencimiento: {d.vencimiento}</div>
       {d.cupon !== null && <div style={{ color: "#CBD5E0", fontSize: 12 }}>Cupon: {d.cupon.toFixed(3)}%</div>}
-      <div style={{ color: "#CBD5E0", fontSize: 12 }}>Precio: {d.precio?.toFixed(2) ?? "—"}</div>
+      <div style={{ color: "#CBD5E0", fontSize: 12 }}>Precio: {d.precio?.toFixed(2) ?? "\u2014"}</div>
       <div style={{ color: "#ffffff", fontSize: 14, fontWeight: 600, fontFamily: "monospace" }}>
         TIR: {d.tir.toFixed(2)}%
       </div>
@@ -186,18 +42,25 @@ export default function BondPanel() {
   const [sections, setSections] = useState(null);
   const [active, setActive] = useState(null);
   const [parsing, setParsing] = useState(false);
+  const [error, setError] = useState(null);
   const fileRef = useRef(null);
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setParsing(true);
+    setError(null);
     try {
-      const result = await parsePDF(file);
+      const formData = new FormData();
+      formData.append("pdf", file);
+      const res = await fetch("/api/parse-bonds", { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Server error");
+      const result = await res.json();
       setSections(result);
       setActive(null);
     } catch (err) {
       console.error("PDF parse error:", err);
+      setError("Error al procesar el PDF. Intentá de nuevo.");
     }
     setParsing(false);
     if (fileRef.current) fileRef.current.value = "";
@@ -205,7 +68,7 @@ export default function BondPanel() {
 
   const sectionKeys = sections ? Object.keys(sections).filter((k) => sections[k].length > 0) : [];
   const activeData = active && sections?.[active] ? sections[active] : null;
-  const activeConfig = active ? SECTION_MAP[active] : null;
+  const activeConfig = active ? SECTION_CONFIG[active] : null;
 
   const rates = activeData?.map((d) => d.tir) || [];
   const minRate = rates.length ? Math.floor(Math.min(...rates) * 10) / 10 - 0.3 : 0;
@@ -232,11 +95,15 @@ export default function BondPanel() {
         <div className="text-center text-text-sec text-sm py-10">Procesando PDF...</div>
       )}
 
+      {error && (
+        <div className="text-center text-neg text-sm py-4">{error}</div>
+      )}
+
       {/* Issuer buttons */}
       {sectionKeys.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {sectionKeys.map((key) => {
-            const cfg = SECTION_MAP[key] || { label: key, color: "#5B8DEF" };
+            const cfg = SECTION_CONFIG[key] || { label: key, color: "#5B8DEF" };
             const isActive = active === key;
             return (
               <button
@@ -256,7 +123,7 @@ export default function BondPanel() {
         </div>
       )}
 
-      {!sections && !parsing && (
+      {!sections && !parsing && !error && (
         <div className="flex items-center justify-center h-40">
           <div className="text-text-sec text-sm">Subí un PDF de bonos para ver las curvas de rendimiento.</div>
         </div>
@@ -335,9 +202,9 @@ export default function BondPanel() {
               <tbody>
                 {activeData.map((b, i) => (
                   <tr key={i} className={`border-b border-border ${i % 2 === 0 ? "" : "bg-white/[0.01]"}`}>
-                    <td className="px-3 py-2 text-sm text-white font-mono">{b.cupon !== null ? b.cupon.toFixed(3) + "%" : "—"}</td>
+                    <td className="px-3 py-2 text-sm text-white font-mono">{b.cupon !== null ? b.cupon.toFixed(3) + "%" : "\u2014"}</td>
                     <td className="px-3 py-2 text-sm text-white">{b.vencimiento}</td>
-                    <td className="px-3 py-2 text-right text-sm text-white font-mono">{b.precio?.toFixed(2) ?? "—"}</td>
+                    <td className="px-3 py-2 text-right text-sm text-white font-mono">{b.precio?.toFixed(2) ?? "\u2014"}</td>
                     <td className="px-3 py-2 text-right text-sm font-semibold font-mono" style={{ color: activeConfig.color }}>
                       {b.tir.toFixed(2)}%
                     </td>
