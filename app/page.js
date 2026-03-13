@@ -97,11 +97,8 @@ export default function Home() {
       )}
 
       {!loading && tab === "Watchlist" && (
-        <div className="flex flex-col items-center justify-center h-80 text-center">
-          <div className="text-6xl mb-6">🚧</div>
-          <div className="text-3xl font-bold text-white mb-3">En Construcción</div>
-          <div className="text-lg text-[#CBD5E0] mb-2">"Facu está trabajando en esto... o eso dice."</div>
-          <div className="text-lg text-[#CBD5E0]">"Mientras tanto, mirá el Overview que quedó hermoso."</div>
+        <div className="flex items-center justify-center h-80">
+          <div className="text-3xl font-bold text-white">🚧 En construcción</div>
         </div>
       )}
 
