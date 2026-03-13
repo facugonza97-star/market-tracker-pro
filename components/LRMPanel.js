@@ -110,13 +110,31 @@ export default function LRMPanel() {
               </tr>
             </thead>
             <tbody>
-              {calendar.map((item, i) => (
-                <tr key={i} className={`border-b border-border ${i % 2 === 0 ? "" : "bg-white/[0.01]"}`}>
-                  <td className="px-3 py-2 text-xs text-white font-mono">{item.fechaLicitacion}</td>
-                  <td className="px-3 py-2 text-xs text-white font-mono">{item.fechaVencimiento}</td>
-                  <td className="px-3 py-2 text-center text-xs text-white font-mono">{item.plazo}</td>
-                </tr>
-              ))}
+              {calendar.map((item, i) => {
+                // Detect week break by comparing week numbers of fechaLicitacion
+                let weekBreak = false;
+                if (i > 0 && item.fechaLicitacion && calendar[i - 1].fechaLicitacion) {
+                  const parse = (s) => {
+                    const parts = s.split("/");
+                    if (parts.length === 3) return new Date(+parts[2], +parts[1] - 1, +parts[0]);
+                    return new Date(s);
+                  };
+                  const getWeek = (d) => {
+                    const start = new Date(d.getFullYear(), 0, 1);
+                    return Math.ceil(((d - start) / 86400000 + start.getDay() + 1) / 7);
+                  };
+                  const curr = parse(item.fechaLicitacion);
+                  const prev = parse(calendar[i - 1].fechaLicitacion);
+                  if (!isNaN(curr) && !isNaN(prev)) weekBreak = getWeek(curr) !== getWeek(prev) || curr.getFullYear() !== prev.getFullYear();
+                }
+                return (
+                  <tr key={i} className={`border-b border-border ${i % 2 === 0 ? "" : "bg-white/[0.01]"}`} style={weekBreak ? { borderTop: "1px solid #334155" } : undefined}>
+                    <td className="px-3 py-2 text-xs text-white font-mono">{item.fechaLicitacion}</td>
+                    <td className="px-3 py-2 text-xs text-white font-mono">{item.fechaVencimiento}</td>
+                    <td className="px-3 py-2 text-center text-xs text-white font-mono">{item.plazo}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         ) : calendar && calendar.length === 0 ? (
