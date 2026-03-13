@@ -20,7 +20,8 @@ export async function GET() {
     const to = new Date(today.getTime() + 14 * 86400000).toISOString().split("T")[0];
 
     const res = await fetch(
-      `${STABLE}/economic-calendar?from=${from}&to=${to}&apikey=${API_KEY}`
+      `${STABLE}/economic-calendar?from=${from}&to=${to}&apikey=${API_KEY}`,
+      { next: { revalidate: 3600 } }
     );
     if (!res.ok) {
       console.error("Econ calendar fetch failed:", res.status);

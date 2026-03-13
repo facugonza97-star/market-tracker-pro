@@ -97,7 +97,7 @@ function parseSheetCSV(text) {
 
 export async function GET() {
   try {
-    const res = await fetch(SHEET_CSV_URL, { cache: "no-store" });
+    const res = await fetch(SHEET_CSV_URL, { next: { revalidate: 3600 } });
     if (!res.ok) {
       console.error("LRM Sheet fetch failed:", res.status);
       return NextResponse.json(EMPTY_DATA);

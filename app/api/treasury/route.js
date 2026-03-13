@@ -13,7 +13,8 @@ export async function GET() {
   }
   try {
     const res = await fetch(
-      `https://financialmodelingprep.com/stable/treasury-rates?apikey=${API_KEY}`
+      `https://financialmodelingprep.com/stable/treasury-rates?apikey=${API_KEY}`,
+      { next: { revalidate: 3600 } }
     );
     if (!res.ok) throw new Error("Treasury fetch failed");
     const data = await res.json();
