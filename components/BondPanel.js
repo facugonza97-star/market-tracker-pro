@@ -319,9 +319,9 @@ export default function BondPanel() {
             <table className="w-full">
               <thead>
                 <tr style={{ backgroundColor: "#0d0d1a" }}>
-                  <th className="px-3 py-2.5 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide">Cupon</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "15%" }}>Cupon</th>
                   <th className="px-3 py-2.5 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide">Vencimiento</th>
-                  <th className="px-3 py-2.5 text-right text-xs font-bold text-[#94A3B8] uppercase tracking-wide">Precio</th>
+                  <th className="px-3 py-2.5 text-right text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "15%" }}>Precio</th>
                   <th className="px-3 py-2.5 text-right text-xs font-bold text-[#94A3B8] uppercase tracking-wide">TIR</th>
                 </tr>
               </thead>
