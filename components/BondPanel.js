@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from "recharts";
 
 const SECTION_CONFIG = {
@@ -42,16 +42,47 @@ export default function BondPanel() {
   const [sections, setSections] = useState(null);
   const [active, setActive] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [source, setSource] = useState(null);
+  const [error, setError] = useState(null);
+  const fileRef = useRef(null);
 
+  // Load from Google Sheets on mount as fallback
   useEffect(() => {
     fetch("/api/bonos")
       .then((r) => r.json())
       .then((data) => {
         setSections(data);
+        setSource("sheets");
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
+
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/parse-bonds", { method: "POST", body: formData });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Error del servidor");
+      }
+      const result = await res.json();
+      setSections(result);
+      setSource("pdf");
+      setActive(null);
+    } catch (err) {
+      console.error("PDF upload error:", err);
+      setError(err.message || "Error al procesar el PDF");
+    }
+    setUploading(false);
+    if (fileRef.current) fileRef.current.value = "";
+  };
 
   const sectionKeys = sections ? Object.keys(sections).filter((k) => sections[k].length > 0) : [];
   const activeData = active && sections?.[active] ? sections[active] : null;
@@ -63,7 +94,32 @@ export default function BondPanel() {
 
   return (
     <div className="px-6 py-5 space-y-5">
-      <span className="text-[20px] font-semibold text-white block">Bonos</span>
+      {/* Header with upload */}
+      <div className="flex items-center justify-between">
+        <div>
+          <span className="text-[20px] font-semibold text-white">Bonos</span>
+          {source && (
+            <span className="text-[11px] text-text-dim ml-3">
+              {source === "pdf" ? "Datos del PDF" : "Datos de Google Sheets"}
+            </span>
+          )}
+        </div>
+        <label className={`bg-accent text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-accent/80 transition cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
+          {uploading ? "Procesando..." : "\u{1F4C4} Subir PDF de Bonos"}
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".pdf"
+            className="hidden"
+            onChange={handleUpload}
+            disabled={uploading}
+          />
+        </label>
+      </div>
+
+      {error && (
+        <div className="text-center text-neg text-sm py-2">{error}</div>
+      )}
 
       {loading && (
         <div className="text-center text-text-sec text-sm py-10">Cargando datos de bonos...</div>
