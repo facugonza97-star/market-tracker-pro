@@ -1,24 +1,48 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 const SECTION_CONFIG = {
   "Uruguay USD": { label: "\u{1F1FA}\u{1F1FE} Uruguay USD", color: "#5B8DEF" },
-  "Uruguay Pesos": { label: "\u{1F1FA}\u{1F1FE} Uruguay Pesos", color: "#5B8DEF" },
-  "Notas UI": { label: "\u{1F1FA}\u{1F1FE} Notas UI", color: "#5B8DEF" },
-  "Notas Pesos": { label: "\u{1F1FA}\u{1F1FE} Notas Pesos", color: "#5B8DEF" },
-  "US Treasuries": { label: "\u{1F1FA}\u{1F1F8} US Treasuries", color: "#34D399" },
-  "US TIPS": { label: "\u{1F1FA}\u{1F1F8} US TIPS", color: "#34D399" },
+  "Uruguay Pesos": { label: "\u{1F1FA}\u{1F1FE} Uruguay Pesos", color: "#38BDF8" },
+  "Notas UI": { label: "\u{1F1FA}\u{1F1FE} Notas UI", color: "#A78BFA" },
+  "Notas Pesos": { label: "\u{1F1FA}\u{1F1FE} Notas Pesos", color: "#F472B6" },
+  "US Treasuries": { label: "\u{1F1FA}\u{1F1F8} US Treasuries", color: "#48BB78" },
+  "US TIPS": { label: "\u{1F1FA}\u{1F1F8} US TIPS", color: "#86EFAC" },
   "T-bills": { label: "\u{1F1FA}\u{1F1F8} T-bills", color: "#34D399" },
-  "Strips": { label: "\u{1F1FA}\u{1F1F8} Strips", color: "#34D399" },
-  "PEMEX": { label: "\u{1F1F2}\u{1F1FD} PEMEX", color: "#F59E0B" },
+  "Strips": { label: "\u{1F1FA}\u{1F1F8} Strips", color: "#2DD4BF" },
+  "PEMEX": { label: "\u{1F1F2}\u{1F1FD} PEMEX", color: "#FB923C" },
   "Petrobras": { label: "\u{1F1E7}\u{1F1F7} Petrobras", color: "#FBBF24" },
-  "Brasil": { label: "\u{1F1E7}\u{1F1F7} Brasil", color: "#FBBF24" },
-  "Ecopetrol": { label: "\u{1F1E8}\u{1F1F4} Ecopetrol", color: "#EF4444" },
-  "Panama": { label: "\u{1F1F5}\u{1F1E6} Panama", color: "#A78BFA" },
+  "Brasil": { label: "\u{1F1E7}\u{1F1F7} Brasil", color: "#F59E0B" },
+  "Ecopetrol": { label: "\u{1F1E8}\u{1F1F4} Ecopetrol", color: "#F87171" },
+  "Panama": { label: "\u{1F1F5}\u{1F1E6} Panama", color: "#C084FC" },
 };
 
-function BondTooltip({ active, payload }) {
+function CompareTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{
+      background: "#0F1520",
+      border: "1px solid #2A3A50",
+      borderRadius: 8,
+      padding: "8px 12px",
+    }}>
+      {payload.map((p, i) => (
+        <div key={i} style={{ marginBottom: i < payload.length - 1 ? 6 : 0 }}>
+          <div style={{ color: p.color, fontSize: 12, fontWeight: 600 }}>{p.name}</div>
+          <div style={{ color: "#ffffff", fontSize: 14, fontWeight: 600, fontFamily: "monospace" }}>
+            {p.value != null ? p.value.toFixed(2) + "%" : "\u2014"}
+          </div>
+        </div>
+      ))}
+      {payload[0]?.payload?.year && (
+        <div style={{ color: "#94A3B8", fontSize: 11, marginTop: 4 }}>{payload[0].payload.year}</div>
+      )}
+    </div>
+  );
+}
+
+function SingleTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   return (
@@ -41,13 +65,13 @@ function BondTooltip({ active, payload }) {
 export default function BondPanel() {
   const [sections, setSections] = useState(null);
   const [active, setActive] = useState(null);
+  const [compare, setCompare] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [source, setSource] = useState(null);
   const [error, setError] = useState(null);
   const fileRef = useRef(null);
 
-  // Load from Google Sheets on mount as fallback
   useEffect(() => {
     fetch("/api/bonos")
       .then((r) => r.json())
@@ -61,28 +85,23 @@ export default function BondPanel() {
 
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
-    console.log("[BondPanel] handleUpload triggered, file:", file ? `${file.name} (${file.size} bytes, ${file.type})` : "NONE");
     if (!file) return;
     setUploading(true);
     setError(null);
     try {
       const formData = new FormData();
       formData.append("file", file);
-      console.log("[BondPanel] Sending POST to /api/parse-bonds...");
       const res = await fetch("/api/parse-bonds", { method: "POST", body: formData });
-      console.log("[BondPanel] Response status:", res.status);
       if (!res.ok) {
         const errBody = await res.text();
-        console.error("[BondPanel] Server error response:", errBody);
         throw new Error(errBody || `Server error ${res.status}`);
       }
       const result = await res.json();
-      console.log("[BondPanel] Sections received:", Object.keys(result));
       setSections(result);
       setSource("excel");
       setActive(null);
+      setCompare(null);
     } catch (err) {
-      console.error("[BondPanel] Upload failed:", err.message, err);
       setError(err.message || "Error al procesar el Excel");
     }
     setUploading(false);
@@ -92,10 +111,36 @@ export default function BondPanel() {
   const sectionKeys = sections ? Object.keys(sections).filter((k) => sections[k].length > 0) : [];
   const activeData = active && sections?.[active] ? sections[active] : null;
   const activeConfig = active ? SECTION_CONFIG[active] : null;
+  const compareData = compare && sections?.[compare] ? sections[compare] : null;
+  const compareConfig = compare ? SECTION_CONFIG[compare] : null;
 
-  const rates = activeData?.map((d) => d.tir) || [];
-  const minRate = rates.length ? Math.floor(Math.min(...rates) * 10) / 10 - 0.3 : 0;
-  const maxRate = rates.length ? Math.ceil(Math.max(...rates) * 10) / 10 + 0.5 : 10;
+  // Build merged chart data for comparison
+  const isComparing = activeData && compareData && compare !== active;
+  let chartData, allRates;
+
+  if (isComparing) {
+    // Merge both datasets by year
+    const yearMap = {};
+    for (const b of activeData) {
+      if (!yearMap[b.year]) yearMap[b.year] = { year: b.year };
+      yearMap[b.year].tir1 = b.tir;
+    }
+    for (const b of compareData) {
+      if (!yearMap[b.year]) yearMap[b.year] = { year: b.year };
+      yearMap[b.year].tir2 = b.tir;
+    }
+    chartData = Object.values(yearMap).sort((a, b) => a.year - b.year);
+    allRates = chartData.flatMap((d) => [d.tir1, d.tir2]).filter((v) => v != null);
+  } else if (activeData) {
+    chartData = activeData;
+    allRates = activeData.map((d) => d.tir);
+  } else {
+    chartData = [];
+    allRates = [];
+  }
+
+  const minRate = allRates.length ? Math.floor(Math.min(...allRates) * 10) / 10 - 0.3 : 0;
+  const maxRate = allRates.length ? Math.ceil(Math.max(...allRates) * 10) / 10 + 0.5 : 10;
 
   return (
     <div className="px-6 py-5 space-y-5">
@@ -139,7 +184,10 @@ export default function BondPanel() {
             return (
               <button
                 key={key}
-                onClick={() => setActive(isActive ? null : key)}
+                onClick={() => {
+                  setActive(isActive ? null : key);
+                  if (isActive) setCompare(null);
+                }}
                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition border ${
                   isActive
                     ? "bg-white/10 border-white/30 text-white"
@@ -165,16 +213,44 @@ export default function BondPanel() {
         <div className="space-y-5">
           {/* Chart */}
           <div className="bg-card border border-border rounded-xl p-5">
-            <span className="text-[18px] font-semibold text-white block mb-4">
-              {activeConfig.label} — Curva de Rendimiento
-            </span>
-            <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={activeData} margin={{ top: 25, right: 15, left: 0, bottom: 0 }}>
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <span className="text-[18px] font-semibold text-white">
+                {activeConfig.label} — Curva de Rendimiento
+              </span>
+              {/* Compare dropdown */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-text-dim">Comparar con:</span>
+                <select
+                  value={compare || ""}
+                  onChange={(e) => setCompare(e.target.value || null)}
+                  className="bg-bg border border-border rounded-lg px-3 py-1.5 text-sm text-white outline-none"
+                  style={{ minWidth: 160 }}
+                >
+                  <option value="">Ninguno</option>
+                  {sectionKeys
+                    .filter((k) => k !== active)
+                    .map((k) => (
+                      <option key={k} value={k}>
+                        {SECTION_CONFIG[k]?.label || k}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
+
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={chartData} margin={{ top: 15, right: 15, left: 0, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="bondGrad" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="bondGrad1" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor={activeConfig.color} stopOpacity={0.15} />
                     <stop offset="95%" stopColor={activeConfig.color} stopOpacity={0} />
                   </linearGradient>
+                  {isComparing && compareConfig && (
+                    <linearGradient id="bondGrad2" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={compareConfig.color} stopOpacity={0.1} />
+                      <stop offset="95%" stopColor={compareConfig.color} stopOpacity={0} />
+                    </linearGradient>
+                  )}
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1E2D40" vertical={false} />
                 <XAxis
@@ -191,24 +267,49 @@ export default function BondPanel() {
                   tickFormatter={(v) => v.toFixed(1) + "%"}
                   width={50}
                 />
-                <Tooltip content={<BondTooltip />} cursor={{ stroke: activeConfig.color, strokeOpacity: 0.3 }} />
-                <Area
-                  type="monotone"
-                  dataKey="tir"
-                  stroke={activeConfig.color}
-                  strokeWidth={2}
-                  fill="url(#bondGrad)"
-                  dot={{ r: 4, fill: activeConfig.color, strokeWidth: 0 }}
-                  activeDot={{ r: 6, fill: activeConfig.color, stroke: "#ffffff", strokeWidth: 2 }}
-                >
-                  <LabelList
+                <Tooltip content={isComparing ? <CompareTooltip /> : <SingleTooltip />} cursor={{ stroke: "#94A3B8", strokeOpacity: 0.3 }} />
+                {isComparing ? (
+                  <>
+                    <Area
+                      type="monotone"
+                      dataKey="tir1"
+                      name={activeConfig.label}
+                      stroke={activeConfig.color}
+                      strokeWidth={2}
+                      fill="url(#bondGrad1)"
+                      dot={{ r: 3, fill: activeConfig.color, strokeWidth: 0 }}
+                      activeDot={{ r: 5, fill: activeConfig.color, stroke: "#fff", strokeWidth: 2 }}
+                      connectNulls
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="tir2"
+                      name={compareConfig.label}
+                      stroke={compareConfig.color}
+                      strokeWidth={2}
+                      fill="url(#bondGrad2)"
+                      dot={{ r: 3, fill: compareConfig.color, strokeWidth: 0 }}
+                      activeDot={{ r: 5, fill: compareConfig.color, stroke: "#fff", strokeWidth: 2 }}
+                      connectNulls
+                    />
+                    <Legend
+                      verticalAlign="top"
+                      height={30}
+                      formatter={(value) => <span style={{ color: "#CBD5E0", fontSize: 12 }}>{value}</span>}
+                    />
+                  </>
+                ) : (
+                  <Area
+                    type="monotone"
                     dataKey="tir"
-                    position="top"
-                    offset={10}
-                    formatter={(v) => v.toFixed(2) + "%"}
-                    style={{ fontSize: 11, fill: "#FFFFFF", fontWeight: 600 }}
+                    name={activeConfig.label}
+                    stroke={activeConfig.color}
+                    strokeWidth={2}
+                    fill="url(#bondGrad1)"
+                    dot={{ r: 4, fill: activeConfig.color, strokeWidth: 0 }}
+                    activeDot={{ r: 6, fill: activeConfig.color, stroke: "#ffffff", strokeWidth: 2 }}
                   />
-                </Area>
+                )}
               </AreaChart>
             </ResponsiveContainer>
           </div>
