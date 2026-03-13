@@ -1,27 +1,55 @@
 import { NextResponse } from "next/server";
 import * as XLSX from "xlsx";
+import { google } from "googleapis";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const SHEETS = [
-  "Uruguay USD",
-  "Uruguay Pesos",
-  "Notas UI",
-  "Notas Pesos",
-  "US Treasuries",
-  "US TIPS",
-  "T-bills",
-  "Strips",
-  "PEMEX",
-  "Petrobras",
-  "Brasil",
-  "Ecopetrol",
-  "Panama",
+const SHEET_ID = "1hwrHz_hsLhZVdYvh6MWxzxMOsgVo1D08Ckk0rGnHQgA";
+
+const SHEET_NAMES = [
+  "Uruguay USD", "Uruguay Pesos", "Notas UI", "Notas Pesos",
+  "US Treasuries", "US TIPS", "T-bills", "Strips",
+  "PEMEX", "Petrobras", "Brasil", "Ecopetrol", "Panama",
 ];
 
+async function getSheetsClient() {
+  const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+  const auth = new google.auth.GoogleAuth({
+    credentials,
+    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+  });
+  return google.sheets({ version: "v4", auth });
+}
+
+async function saveToGoogleSheet(parsedData) {
+  const sheets = await getSheetsClient();
+
+  for (const sheetName of SHEET_NAMES) {
+    const bonds = parsedData[sheetName];
+    if (!bonds || bonds.length === 0) continue;
+
+    const rows = [
+      ["EMISOR", "CUPON", "VENCIMIENTO", "PRECIO", "TIR"],
+      ...bonds.map((b) => [b.EMISOR ?? "", b.CUPON ?? "", b.VENCIMIENTO ?? "", b.PRECIO ?? "", b.TIR ?? ""]),
+    ];
+
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: SHEET_ID,
+      range: `'${sheetName}'!A:E`,
+    });
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `'${sheetName}'!A1`,
+      valueInputOption: "RAW",
+      requestBody: { values: rows },
+    });
+  }
+}
+
 function parseNum(val) {
-  if (val === null || val === undefined) return null;
+  if (val === null || val === undefined || val === "") return null;
   if (typeof val === "number") return val;
   const clean = String(val).trim().replace(",", ".");
   const n = parseFloat(clean);
@@ -30,16 +58,13 @@ function parseNum(val) {
 
 function extractYear(val) {
   if (!val) return null;
-  // If it's a Date object (Excel dates)
   if (val instanceof Date) return val.getFullYear();
   const str = String(val).trim();
-  // DD/MM/YYYY
   const parts = str.split("/");
   if (parts.length === 3) {
     const y = parseInt(parts[2]);
     if (y > 2000) return y;
   }
-  // Try ISO or other formats
   const match = str.match(/\b(20\d{2})\b/);
   return match ? parseInt(match[1]) : null;
 }
@@ -54,64 +79,70 @@ function formatDate(val) {
   return String(val).trim();
 }
 
-function parseSheet(worksheet) {
-  const rows = XLSX.utils.sheet_to_json(worksheet, { defval: null });
-  const bonds = [];
+function processForFrontend(parsedData) {
+  const sections = {};
+  for (const sheetName of SHEET_NAMES) {
+    const rows = parsedData[sheetName];
+    if (!rows || rows.length === 0) continue;
 
-  for (const row of rows) {
-    // Try different possible column names (case-insensitive matching)
-    const cupon = parseNum(row.CUPON ?? row.Cupon ?? row.cupon);
-    const vencRaw = row.VENCIMIENTO ?? row.Vencimiento ?? row.vencimiento;
-    const precio = parseNum(row.PRECIO ?? row.Precio ?? row.precio);
-    const tir = parseNum(row.TIR ?? row.Tir ?? row.tir ?? row["TIR %"] ?? row["TIR%"]);
+    const bonds = [];
+    for (const row of rows) {
+      const cupon = parseNum(row.CUPON ?? row.Cupon ?? row.cupon);
+      const vencRaw = row.VENCIMIENTO ?? row.Vencimiento ?? row.vencimiento;
+      const precio = parseNum(row.PRECIO ?? row.Precio ?? row.precio);
+      const tir = parseNum(row.TIR ?? row.Tir ?? row.tir ?? row["TIR %"]);
+      const vencimiento = formatDate(vencRaw);
+      const year = extractYear(vencRaw);
 
-    const vencimiento = formatDate(vencRaw);
-    const year = extractYear(vencRaw);
+      if (tir === null || !year) continue;
+      bonds.push({ cupon, vencimiento, year, precio, tir });
+    }
 
-    if (tir === null || !year) continue;
-
-    bonds.push({ cupon, vencimiento, year, precio, tir });
+    bonds.sort((a, b) => a.year - b.year);
+    if (bonds.length > 0) sections[sheetName] = bonds;
   }
-
-  bonds.sort((a, b) => a.year - b.year);
-  return bonds;
+  return sections;
 }
 
 export async function POST(request) {
-  console.log("[parse-bonds] POST received");
   try {
     const formData = await request.formData();
     const file = formData.get("file");
-    console.log("[parse-bonds] File:", file ? `${file.name} (${file.size} bytes)` : "NULL");
-    if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
-    }
+    if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true });
 
     console.log("[parse-bonds] Workbook sheets:", workbook.SheetNames.join(", "));
 
-    const sections = {};
-    for (const name of SHEETS) {
-      const ws = workbook.Sheets[name];
-      if (!ws) {
-        console.log(`[parse-bonds] Sheet "${name}": NOT FOUND`);
+    const parsedData = {};
+    for (const sheetName of SHEET_NAMES) {
+      if (!workbook.SheetNames.includes(sheetName)) {
+        parsedData[sheetName] = [];
         continue;
       }
-      const bonds = parseSheet(ws);
-      console.log(`[parse-bonds] Sheet "${name}": ${bonds.length} bonds`);
-      if (bonds.length > 0) {
-        sections[name] = bonds;
-      }
+      const sheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+      parsedData[sheetName] = rows;
+      console.log(`[parse-bonds] Sheet "${sheetName}": ${rows.length} rows`);
     }
 
+    // Save to Google Sheet in background (don't block response)
+    try {
+      await saveToGoogleSheet(parsedData);
+      console.log("[parse-bonds] Saved to Google Sheet");
+    } catch (sheetError) {
+      console.error("[parse-bonds] Error saving to Sheet:", sheetError.message);
+    }
+
+    // Process for frontend display
+    const sections = processForFrontend(parsedData);
     const summary = Object.entries(sections).map(([k, v]) => `${k}: ${v.length}`).join(", ");
     console.log("[parse-bonds] Result:", summary || "NO DATA");
 
     return NextResponse.json(sections);
   } catch (error) {
-    console.error("[parse-bonds] ERROR:", error.message, error.stack);
-    return NextResponse.json({ error: "Failed: " + error.message }, { status: 500 });
+    console.error("[parse-bonds] ERROR:", error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
