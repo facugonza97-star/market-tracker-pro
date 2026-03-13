@@ -97,13 +97,11 @@ export default function Home() {
       )}
 
       {!loading && tab === "Watchlist" && (
-        <div className="flex flex-col items-center justify-center h-64 text-center">
-          <div className="text-4xl mb-4">⭐</div>
-          <div className="text-lg font-semibold text-white mb-2">Watchlist</div>
-          <div className="text-sm text-text-sec mb-5">Sign in to create your personal watchlist</div>
-          <button className="bg-accent text-white px-8 py-2.5 rounded-lg text-sm font-semibold hover:bg-accent/80 transition">
-            Sign in with Google
-          </button>
+        <div className="flex flex-col items-center justify-center h-80 text-center">
+          <div className="text-6xl mb-6">🚧</div>
+          <div className="text-3xl font-bold text-white mb-3">En Construcción</div>
+          <div className="text-lg text-[#CBD5E0] mb-2">"Facu está trabajando en esto... o eso dice."</div>
+          <div className="text-lg text-[#CBD5E0]">"Mientras tanto, mirá el Overview que quedó hermoso."</div>
         </div>
       )}
 
