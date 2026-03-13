@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from "recharts";
 
 function CustomTooltip({ active, payload, label }) {
@@ -111,28 +111,29 @@ export default function LRMPanel() {
             </thead>
             <tbody>
               {calendar.map((item, i) => {
-                // Detect week break by comparing week numbers of fechaLicitacion
+                const getWeek = (dateStr) => {
+                  const [d, m, y] = dateStr.split("/").map(Number);
+                  const date = new Date(y, m - 1, d);
+                  const startOfYear = new Date(y, 0, 1);
+                  return Math.ceil(((date - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
+                };
                 let weekBreak = false;
                 if (i > 0 && item.fechaLicitacion && calendar[i - 1].fechaLicitacion) {
-                  const parse = (s) => {
-                    const parts = s.split("/");
-                    if (parts.length === 3) return new Date(+parts[2], +parts[1] - 1, +parts[0]);
-                    return new Date(s);
-                  };
-                  const getWeek = (d) => {
-                    const start = new Date(d.getFullYear(), 0, 1);
-                    return Math.ceil(((d - start) / 86400000 + start.getDay() + 1) / 7);
-                  };
-                  const curr = parse(item.fechaLicitacion);
-                  const prev = parse(calendar[i - 1].fechaLicitacion);
-                  if (!isNaN(curr) && !isNaN(prev)) weekBreak = getWeek(curr) !== getWeek(prev) || curr.getFullYear() !== prev.getFullYear();
+                  try {
+                    weekBreak = getWeek(item.fechaLicitacion) !== getWeek(calendar[i - 1].fechaLicitacion);
+                  } catch {}
                 }
                 return (
-                  <tr key={i} className={`border-b border-border ${i % 2 === 0 ? "" : "bg-white/[0.01]"}`} style={weekBreak ? { borderTop: "1px solid #334155" } : undefined}>
-                    <td className="px-3 py-2 text-xs text-white font-mono">{item.fechaLicitacion}</td>
-                    <td className="px-3 py-2 text-xs text-white font-mono">{item.fechaVencimiento}</td>
-                    <td className="px-3 py-2 text-center text-xs text-white font-mono">{item.plazo}</td>
-                  </tr>
+                  <React.Fragment key={i}>
+                    {weekBreak && (
+                      <tr><td colSpan={3} style={{ height: 8, background: "#1E293B", padding: 0, border: "none" }} /></tr>
+                    )}
+                    <tr className={`border-b border-border ${i % 2 === 0 ? "" : "bg-white/[0.01]"}`}>
+                      <td className="px-3 py-2 text-xs text-white font-mono">{item.fechaLicitacion}</td>
+                      <td className="px-3 py-2 text-xs text-white font-mono">{item.fechaVencimiento}</td>
+                      <td className="px-3 py-2 text-center text-xs text-white font-mono">{item.plazo}</td>
+                    </tr>
+                  </React.Fragment>
                 );
               })}
             </tbody>
