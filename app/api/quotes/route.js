@@ -66,6 +66,7 @@ export async function GET() {
           ytd: pc["ytd"] ?? null,
           y1: pc["1Y"] ?? null,
           y3: pc["3Y"] ?? null,
+          y5: pc["5Y"] ?? null,
         };
       });
     }

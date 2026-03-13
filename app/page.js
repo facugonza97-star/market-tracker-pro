@@ -80,7 +80,6 @@ export default function Home() {
 
       {!loading && tab === "Tracker" && (
         <div className="px-6 py-5">
-          <ForexStrip forex={forex} />
           <TrackerTable quotes={quotes} />
         </div>
       )}
