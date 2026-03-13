@@ -316,13 +316,13 @@ export default function BondPanel() {
 
           {/* Table */}
           <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <table className="w-full">
+            <table className="w-full" style={{ tableLayout: "fixed" }}>
               <thead>
                 <tr style={{ backgroundColor: "#0d0d1a" }}>
-                  <th className="py-2 px-2 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: 80 }}>Cupon</th>
-                  <th className="py-2 px-2 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: 120 }}>Vencimiento</th>
-                  <th className="py-2 px-2 text-right text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: 100 }}>Precio</th>
-                  <th className="py-2 px-2 text-right text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: 80 }}>TIR</th>
+                  <th className="py-2 px-2 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "25%" }}>Cupon</th>
+                  <th className="py-2 px-2 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "25%" }}>Vencimiento</th>
+                  <th className="py-2 px-2 text-right text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "25%" }}>Precio</th>
+                  <th className="py-2 px-2 text-right text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "25%" }}>TIR</th>
                 </tr>
               </thead>
               <tbody>
