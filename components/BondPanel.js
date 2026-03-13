@@ -18,142 +18,129 @@ const SECTION_CONFIG = {
   "Panama": { label: "\u{1F1F5}\u{1F1E6} Panama", color: "#C084FC" },
 };
 
-// --- TIR Calculator (ICMA Actual/Actual, semiannual coupons) ---
+// ============================================================
+// CALCULADORA TIR — ICMA Actual/Actual, cupones semianuales
+// ============================================================
 
-function parseFecha(str) {
-  if (!str) return null;
-  const parts = str.trim().split("/");
-  if (parts.length !== 3) return null;
-  const d = parseInt(parts[0]);
-  const m = parseInt(parts[1]) - 1;
-  const y = parseInt(parts[2]);
-  if (isNaN(d) || isNaN(m) || isNaN(y)) return null;
-  return new Date(y, m, d);
+function parseFecha(vencimientoStr) {
+  // Soporta DD/MM/YYYY (formato que viene del sheet: "05/04/2027")
+  if (!vencimientoStr) return null;
+  const str = vencimientoStr.toString().trim();
+  // DD/MM/YYYY
+  const partes = str.split("/");
+  if (partes.length === 3) {
+    const dd = parseInt(partes[0]);
+    const mm = parseInt(partes[1]) - 1; // mes base 0
+    const yyyy = parseInt(partes[2]);
+    if (!isNaN(dd) && !isNaN(mm) && !isNaN(yyyy)) {
+      return new Date(yyyy, mm, dd);
+    }
+  }
+  // Fallback: intentar parseo directo
+  const d = new Date(str);
+  return isNaN(d) ? null : d;
 }
 
-function getCouponDates(vencimiento, cuponAnual) {
-  if (!vencimiento || cuponAnual === null || cuponAnual === 0) return [];
-  const today = new Date();
+function getCouponDates(maturityDate) {
+  // Genera todas las fechas de cupón retrocediendo 6 meses desde el vencimiento
+  // Devuelve array ordenado: [prevCoupon, ...futuresCoupons, maturity]
   const dates = [];
-  let d = new Date(vencimiento);
+  const d = new Date(maturityDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   while (d > today) {
     dates.unshift(new Date(d));
     d.setMonth(d.getMonth() - 6);
   }
-  return dates;
+  // d es ahora el último cupón ANTES o IGUAL a hoy (prevCoupon)
+  dates.unshift(new Date(d));
+
+  return dates; // [prevCoupon, nextCoupon, ..., maturity]
 }
 
 function calcularTIR(precioLimpio, cuponAnual, vencimientoStr) {
-  const venc = parseFecha(vencimientoStr);
-  if (!venc || precioLimpio === null || precioLimpio <= 0) return null;
-  if (cuponAnual === null || cuponAnual === 0) {
-    // Zero coupon: TIR = (100/P)^(1/t) - 1
-    const today = new Date();
-    const t = (venc - today) / (365.25 * 86400000);
-    if (t <= 0) return null;
-    return (Math.pow(100 / precioLimpio, 1 / t) - 1) * 100;
-  }
+  const precio = parseFloat(precioLimpio);
+  const cupon = parseFloat(cuponAnual);
+  if (isNaN(precio) || isNaN(cupon) || precio <= 0 || cupon < 0) return null;
 
-  const couponDates = getCouponDates(venc, cuponAnual);
-  if (couponDates.length === 0) return null;
+  const maturity = parseFecha(vencimientoStr);
+  if (!maturity || isNaN(maturity)) return null;
 
-  const semiCoupon = cuponAnual / 2;
-  const today = new Date();
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
 
-  function pvAtRate(r) {
-    const semi = r / 2;
-    let pv = 0;
-    for (let i = 0; i < couponDates.length; i++) {
-      const t = (couponDates[i] - today) / (365.25 * 86400000 / 2); // periods
-      const cf = i === couponDates.length - 1 ? semiCoupon + 100 : semiCoupon;
-      pv += cf / Math.pow(1 + semi, t);
-    }
-    return pv;
-  }
+  if (maturity <= hoy) return null; // bono ya vencido
 
-  // Bisection method
-  let lo = -0.05, hi = 1.0;
-  for (let iter = 0; iter < 200; iter++) {
-    const mid = (lo + hi) / 2;
-    const pv = pvAtRate(mid);
-    if (Math.abs(pv - precioLimpio) < 0.0001) return mid * 100;
-    if (pv > precioLimpio) lo = mid;
-    else hi = mid;
-  }
-  return ((lo + hi) / 2) * 100;
-}
+  const couponSemestral = (cupon / 100 / 2) * 100; // base 100
 
-// --- TIR Modal ---
+  const allDates = getCouponDates(maturity);
+  if (allDates.length < 2) return null;
 
-function TIRModal({ bond, onClose }) {
-  const [precio, setPrecio] = useState(bond.precio !== null ? bond.precio.toString() : "");
-  const precioNum = parseFloat(precio.replace(",", "."));
-  const tirResult = !isNaN(precioNum) && precioNum > 0
-    ? calcularTIR(precioNum, bond.cupon, bond.vencimiento)
-    : null;
+  const prevCoupon = allDates[0];
+  const nextCoupon = allDates[1];
+  const futureDates = allDates.slice(1); // nextCoupon en adelante hasta maturity
 
-  return (
-    <div
-      style={{
-        position: "fixed", inset: 0, zIndex: 9999,
-        background: "rgba(0,0,0,0.6)", display: "flex",
-        alignItems: "center", justifyContent: "center",
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          background: "#0F1520", border: "1px solid #2A3A50",
-          borderRadius: 12, padding: "24px 28px", minWidth: 320, maxWidth: 400,
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div style={{ color: "#94A3B8", fontSize: 12, marginBottom: 4 }}>Calculadora TIR</div>
-        <div style={{ color: "#fff", fontSize: 16, fontWeight: 600, marginBottom: 16 }}>
-          {bond.cupon !== null ? `Cupón ${bond.cupon.toFixed(3)}%` : "Zero Coupon"} — Venc. {bond.vencimiento}
-        </div>
+  // Días reales Actual/Actual
+  const T = (nextCoupon - prevCoupon) / 86400000; // días del período semestral actual
+  const t = (hoy - prevCoupon) / 86400000;        // días transcurridos desde prevCoupon
 
-        <label style={{ color: "#94A3B8", fontSize: 12 }}>Precio limpio</label>
-        <input
-          type="text"
-          value={precio}
-          onChange={(e) => setPrecio(e.target.value)}
-          placeholder="Ej: 95.50"
-          autoFocus
-          style={{
-            display: "block", width: "100%", marginTop: 4, marginBottom: 16,
-            background: "#1A2332", border: "1px solid #2A3A50", borderRadius: 8,
-            padding: "8px 12px", color: "#fff", fontSize: 16, fontFamily: "monospace",
-            outline: "none",
-          }}
-        />
+  // Cupón corrido
+  const cuponCorrido = couponSemestral * (t / T);
+  // Precio sucio
+  const precioSucio = precio + cuponCorrido;
 
-        <div style={{
-          background: "#1A2332", borderRadius: 8, padding: "12px 16px",
-          marginBottom: 16, textAlign: "center",
-        }}>
-          <div style={{ color: "#94A3B8", fontSize: 11, marginBottom: 4 }}>TIR (ICMA Actual/Actual)</div>
-          <div style={{ color: "#fff", fontSize: 28, fontWeight: 700, fontFamily: "monospace" }}>
-            {tirResult !== null ? tirResult.toFixed(3) + "%" : "\u2014"}
-          </div>
-        </div>
+  const N = futureDates.length;
 
-        <button
-          onClick={onClose}
-          style={{
-            width: "100%", padding: "8px 0", background: "#2A3A50",
-            border: "none", borderRadius: 8, color: "#CBD5E0",
-            fontSize: 14, fontWeight: 600, cursor: "pointer",
-          }}
-        >
-          Cerrar
-        </button>
-      </div>
-    </div>
+  // Flujos: cupón semestral en cada fecha, + 100 en el último
+  const flujos = futureDates.map((_, i) =>
+    i === N - 1 ? couponSemestral + 100 : couponSemestral
   );
+
+  // Exponentes ICMA Actual/Actual:
+  // El primer cupón está a (T-t)/T períodos semianuales de distancia
+  // Cada siguiente cupón es +1 período
+  const exponentes = futureDates.map((_, k) => (T - t) / T + k);
+
+  // Función que calcula el precio sucio dado r semestral
+  function precioDado(r) {
+    return flujos.reduce((sum, flujo, i) =>
+      sum + flujo / Math.pow(1 + r, exponentes[i]), 0
+    );
+  }
+
+  // Bisección para encontrar r semestral
+  let lo = 0.00001;
+  let hi = 0.5;
+
+  // Si precio muy bajo (bono distressed), ampliar rango
+  if (precioDado(hi) > precioSucio) hi = 2.0;
+  // Si precio muy alto, reducir rango mínimo
+  if (precioDado(lo) < precioSucio) return null;
+
+  for (let i = 0; i < 200; i++) {
+    const mid = (lo + hi) / 2;
+    if (precioDado(mid) > precioSucio) {
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+
+  const rSemestral = (lo + hi) / 2;
+  // TIR anual efectiva: (1 + r_sem)^2 - 1
+  const tirAnual = (Math.pow(1 + rSemestral, 2) - 1) * 100;
+
+  return {
+    tir: tirAnual.toFixed(2),
+    cuponCorrido: cuponCorrido.toFixed(4),
+    precioSucio: precioSucio.toFixed(4),
+  };
 }
 
-// --- Tooltips ---
+// ============================================================
+// TOOLTIPS
+// ============================================================
 
 function CompareTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
@@ -199,7 +186,114 @@ function SingleTooltip({ active, payload }) {
   );
 }
 
-// --- Main Component ---
+// ============================================================
+// MODAL CALCULADORA TIR
+// ============================================================
+
+function TIRModal({ bond, activeConfig, onClose }) {
+  const [precioInput, setPrecioInput] = useState(bond.precio?.toFixed(2) ?? "");
+
+  const resultado = precioInput !== ""
+    ? calcularTIR(precioInput, bond.cupon, bond.vencimiento)
+    : null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ backgroundColor: "rgba(0,0,0,0.65)" }}
+      onClick={onClose}
+    >
+      <div
+        className="rounded-xl p-6 w-96 text-white"
+        style={{ backgroundColor: "#0F1520", border: "1px solid #2A3A50" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex justify-between items-center mb-5">
+          <div>
+            <div className="text-base font-semibold text-white">Calculadora TIR</div>
+            <div className="text-xs text-[#94A3B8] mt-0.5">Vto. {bond.vencimiento}</div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-[#94A3B8] hover:text-white text-xl leading-none"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Info del bono */}
+        <div className="flex gap-4 mb-5 text-sm">
+          <div className="flex-1 rounded-lg px-3 py-2" style={{ backgroundColor: "#1A2535" }}>
+            <div className="text-[#94A3B8] text-xs mb-1">Cupón anual</div>
+            <div className="font-mono font-semibold">{bond.cupon?.toFixed(3)}%</div>
+          </div>
+          <div className="flex-1 rounded-lg px-3 py-2" style={{ backgroundColor: "#1A2535" }}>
+            <div className="text-[#94A3B8] text-xs mb-1">Vencimiento</div>
+            <div className="font-mono font-semibold">{bond.vencimiento}</div>
+          </div>
+          <div className="flex-1 rounded-lg px-3 py-2" style={{ backgroundColor: "#1A2535" }}>
+            <div className="text-[#94A3B8] text-xs mb-1">Precio mercado</div>
+            <div className="font-mono font-semibold">{bond.precio?.toFixed(2) ?? "\u2014"}</div>
+          </div>
+        </div>
+
+        {/* Input precio */}
+        <div className="mb-5">
+          <label className="block text-xs text-[#94A3B8] mb-1.5">Precio limpio</label>
+          <input
+            type="number"
+            value={precioInput}
+            onChange={(e) => setPrecioInput(e.target.value)}
+            className="w-full rounded-lg px-3 py-2.5 text-white font-mono text-sm focus:outline-none focus:ring-2"
+            style={{
+              backgroundColor: "#1A2535",
+              border: "1px solid #2A3A50",
+              focusRingColor: activeConfig?.color,
+            }}
+            step="0.01"
+            placeholder="Ej: 102.50"
+          />
+        </div>
+
+        {/* Resultados */}
+        {resultado ? (
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm py-2 border-b" style={{ borderColor: "#1E2D40" }}>
+              <span className="text-[#94A3B8]">Cupón corrido</span>
+              <span className="font-mono">{resultado.cuponCorrido}</span>
+            </div>
+            <div className="flex justify-between text-sm py-2 border-b" style={{ borderColor: "#1E2D40" }}>
+              <span className="text-[#94A3B8]">Precio sucio</span>
+              <span className="font-mono">{resultado.precioSucio}</span>
+            </div>
+            <div className="flex justify-between items-center pt-2">
+              <span className="text-sm text-[#94A3B8]">TIR anual efectiva</span>
+              <span
+                className="text-2xl font-bold font-mono"
+                style={{ color: activeConfig?.color ?? "#5B8DEF" }}
+              >
+                {resultado.tir}%
+              </span>
+            </div>
+          </div>
+        ) : precioInput !== "" ? (
+          <div className="text-center text-[#94A3B8] text-sm py-4">
+            No se puede calcular con ese precio
+          </div>
+        ) : (
+          <div className="text-center text-[#94A3B8] text-sm py-4">
+            Ingresá un precio para calcular la TIR
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// COMPONENTE PRINCIPAL
+// ============================================================
 
 export default function BondPanel() {
   const [sections, setSections] = useState(null);
@@ -210,7 +304,7 @@ export default function BondPanel() {
   const [source, setSource] = useState(null);
   const [error, setError] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
-  const [tirBond, setTirBond] = useState(null);
+  const [tirModal, setTirModal] = useState(null); // bono seleccionado para calcular TIR
   const fileRef = useRef(null);
 
   useEffect(() => {
@@ -246,7 +340,6 @@ export default function BondPanel() {
       setSource("excel");
       setActive(null);
       setCompare(null);
-      // Refresh timestamp
       fetch("/api/bonos-timestamp").then((r) => r.json()).then((d) => { if (d.lastUpdate) setLastUpdate(d.lastUpdate); }).catch(() => {});
     } catch (err) {
       setError(err.message || "Error al procesar el Excel");
@@ -261,7 +354,6 @@ export default function BondPanel() {
   const compareData = compare && sections?.[compare] ? sections[compare] : null;
   const compareConfig = compare ? SECTION_CONFIG[compare] : null;
 
-  // Build merged chart data for comparison
   const isComparing = activeData && compareData && compare !== active;
   let chartData, allRates;
 
@@ -290,10 +382,16 @@ export default function BondPanel() {
 
   return (
     <div className="px-6 py-5 space-y-5">
-      {/* TIR Calculator Modal */}
-      {tirBond && <TIRModal bond={tirBond} onClose={() => setTirBond(null)} />}
+      {/* Modal TIR */}
+      {tirModal && (
+        <TIRModal
+          bond={tirModal}
+          activeConfig={activeConfig}
+          onClose={() => setTirModal(null)}
+        />
+      )}
 
-      {/* Header with upload */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <span className="text-[20px] font-semibold text-white">Bonos</span>
@@ -325,7 +423,7 @@ export default function BondPanel() {
         <div className="text-center text-text-sec text-sm py-10">Cargando datos de bonos...</div>
       )}
 
-      {/* Issuer buttons */}
+      {/* Botones emisores */}
       {sectionKeys.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {sectionKeys.map((key) => {
@@ -358,16 +456,15 @@ export default function BondPanel() {
         </div>
       )}
 
-      {/* Chart + Table for active section */}
+      {/* Gráfico + Tabla */}
       {activeData && activeConfig && (
         <div className="space-y-5">
-          {/* Chart */}
+          {/* Gráfico */}
           <div className="bg-card border border-border rounded-xl p-5">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <span className="text-[18px] font-semibold text-white">
                 {activeConfig.label} — Curva de Rendimiento
               </span>
-              {/* Compare dropdown */}
               <div className="flex items-center gap-2">
                 <span className="text-xs text-text-dim">Comparar con:</span>
                 <select
@@ -420,75 +517,47 @@ export default function BondPanel() {
                 <Tooltip content={isComparing ? <CompareTooltip /> : <SingleTooltip />} cursor={{ stroke: "#94A3B8", strokeOpacity: 0.3 }} />
                 {isComparing ? (
                   <>
-                    <Area
-                      type="monotone"
-                      dataKey="tir1"
-                      name={activeConfig.label}
-                      stroke={activeConfig.color}
-                      strokeWidth={2}
-                      fill="url(#bondGrad1)"
-                      dot={{ r: 3, fill: activeConfig.color, strokeWidth: 0 }}
-                      activeDot={{ r: 5, fill: activeConfig.color, stroke: "#fff", strokeWidth: 2 }}
-                      connectNulls
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="tir2"
-                      name={compareConfig.label}
-                      stroke={compareConfig.color}
-                      strokeWidth={2}
-                      fill="url(#bondGrad2)"
-                      dot={{ r: 3, fill: compareConfig.color, strokeWidth: 0 }}
-                      activeDot={{ r: 5, fill: compareConfig.color, stroke: "#fff", strokeWidth: 2 }}
-                      connectNulls
-                    />
-                    <Legend
-                      verticalAlign="top"
-                      height={30}
-                      formatter={(value) => <span style={{ color: "#CBD5E0", fontSize: 12 }}>{value}</span>}
-                    />
+                    <Area type="monotone" dataKey="tir1" name={activeConfig.label} stroke={activeConfig.color} strokeWidth={2} fill="url(#bondGrad1)" dot={{ r: 3, fill: activeConfig.color, strokeWidth: 0 }} activeDot={{ r: 5, fill: activeConfig.color, stroke: "#fff", strokeWidth: 2 }} connectNulls />
+                    <Area type="monotone" dataKey="tir2" name={compareConfig.label} stroke={compareConfig.color} strokeWidth={2} fill="url(#bondGrad2)" dot={{ r: 3, fill: compareConfig.color, strokeWidth: 0 }} activeDot={{ r: 5, fill: compareConfig.color, stroke: "#fff", strokeWidth: 2 }} connectNulls />
+                    <Legend verticalAlign="top" height={30} formatter={(value) => <span style={{ color: "#CBD5E0", fontSize: 12 }}>{value}</span>} />
                   </>
                 ) : (
-                  <Area
-                    type="monotone"
-                    dataKey="tir"
-                    name={activeConfig.label}
-                    stroke={activeConfig.color}
-                    strokeWidth={2}
-                    fill="url(#bondGrad1)"
-                    dot={{ r: 4, fill: activeConfig.color, strokeWidth: 0 }}
-                    activeDot={{ r: 6, fill: activeConfig.color, stroke: "#ffffff", strokeWidth: 2 }}
-                  />
+                  <Area type="monotone" dataKey="tir" name={activeConfig.label} stroke={activeConfig.color} strokeWidth={2} fill="url(#bondGrad1)" dot={{ r: 4, fill: activeConfig.color, strokeWidth: 0 }} activeDot={{ r: 6, fill: activeConfig.color, stroke: "#ffffff", strokeWidth: 2 }} />
                 )}
               </AreaChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Table */}
+          {/* Tabla */}
           <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <table className="w-full" style={{ tableLayout: "fixed" }}>
+            <table style={{ borderCollapse: "collapse", width: "100%" }}>
               <thead>
                 <tr style={{ backgroundColor: "#0d0d1a" }}>
-                  <th className="py-2 px-2 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "22%" }}>Cupón</th>
-                  <th className="py-2 px-2 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "22%" }}>Vencimiento</th>
-                  <th className="py-2 px-2 text-right text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "18%" }}>Precio</th>
-                  <th className="py-2 px-2 text-right text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "14%" }}>TIR</th>
-                  <th className="py-2 px-2 text-center text-xs font-bold text-[#94A3B8] uppercase tracking-wide" style={{ width: "24%" }}></th>
+                  <th className="py-2 px-4 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide whitespace-nowrap">Cupón</th>
+                  <th className="py-2 px-4 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide whitespace-nowrap">Vencimiento</th>
+                  <th className="py-2 px-4 text-right text-xs font-bold text-[#94A3B8] uppercase tracking-wide whitespace-nowrap">Precio</th>
+                  <th className="py-2 px-4 text-right text-xs font-bold text-[#94A3B8] uppercase tracking-wide whitespace-nowrap">TIR</th>
+                  <th className="py-2 px-4 text-center text-xs font-bold text-[#94A3B8] uppercase tracking-wide whitespace-nowrap"></th>
                 </tr>
               </thead>
               <tbody>
                 {activeData.map((b, i) => (
                   <tr key={i} className={`border-b border-border ${i % 2 === 0 ? "" : "bg-white/[0.01]"}`}>
-                    <td className="px-2 py-1.5 text-sm text-white font-mono">{b.cupon !== null ? b.cupon.toFixed(3) + "%" : "\u2014"}</td>
-                    <td className="px-2 py-1.5 text-sm text-white">{b.vencimiento}</td>
-                    <td className="px-2 py-1.5 text-right text-sm text-white font-mono">{b.precio?.toFixed(2) ?? "\u2014"}</td>
-                    <td className="px-2 py-1.5 text-right text-sm font-semibold font-mono" style={{ color: activeConfig.color }}>
+                    <td className="px-4 py-2 text-sm text-white font-mono whitespace-nowrap">{b.cupon !== null ? b.cupon.toFixed(3) + "%" : "\u2014"}</td>
+                    <td className="px-4 py-2 text-sm text-white whitespace-nowrap">{b.vencimiento}</td>
+                    <td className="px-4 py-2 text-right text-sm text-white font-mono whitespace-nowrap">{b.precio?.toFixed(2) ?? "\u2014"}</td>
+                    <td className="px-4 py-2 text-right text-sm font-semibold font-mono whitespace-nowrap" style={{ color: activeConfig.color }}>
                       {b.tir.toFixed(2)}%
                     </td>
-                    <td className="px-2 py-1.5 text-center">
+                    <td className="px-4 py-2 text-center whitespace-nowrap">
                       <button
-                        onClick={() => setTirBond(b)}
-                        className="px-3 py-1 rounded-md text-xs font-semibold bg-white/5 border border-white/10 text-text-sec hover:text-white hover:border-white/20 transition"
+                        onClick={() => setTirModal(b)}
+                        className="text-xs px-3 py-1 rounded-md font-semibold transition hover:opacity-80"
+                        style={{
+                          backgroundColor: activeConfig.color + "22",
+                          color: activeConfig.color,
+                          border: `1px solid ${activeConfig.color}44`,
+                        }}
                       >
                         Calc TIR
                       </button>
