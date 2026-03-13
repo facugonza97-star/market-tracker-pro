@@ -55,20 +55,21 @@ export default function TrackerTable({ quotes }) {
   const totalCols = 5 + COLS.length;
 
   return (
-    <div className="bg-card border border-border rounded-xl overflow-auto mt-4">
+    <div className="bg-card border border-border rounded-xl overflow-x-auto mt-4" style={{ maxHeight: "80vh", overflowY: "auto" }}>
       <table className="w-full">
         <thead>
-          <tr style={{ backgroundColor: "#0F1520", position: "sticky", top: 0, zIndex: 20 }}>
-            <th className="px-3 py-3 text-left text-[12px] font-bold text-[#94A3B8] uppercase tracking-wider">Name</th>
-            <th className="px-2 py-3 text-left text-[12px] font-bold text-[#94A3B8] uppercase tracking-wider">Ticker</th>
-            <th className="px-2 py-3 text-center text-[12px] font-bold text-[#94A3B8] uppercase tracking-wider">Price</th>
-            <th className="px-2 py-3 text-center text-[12px] font-bold text-[#94A3B8] uppercase tracking-wider">52W Hi</th>
-            <th className="px-2 py-3 text-center text-[12px] font-bold text-[#94A3B8] uppercase tracking-wider">% 52WH</th>
+          <tr>
+            <th className="px-3 py-3 text-left text-[12px] font-bold text-[#94A3B8] uppercase tracking-wider" style={{ position: "sticky", top: 0, zIndex: 10, background: "#0F1520" }}>Name</th>
+            <th className="px-2 py-3 text-left text-[12px] font-bold text-[#94A3B8] uppercase tracking-wider" style={{ position: "sticky", top: 0, zIndex: 10, background: "#0F1520" }}>Ticker</th>
+            <th className="px-2 py-3 text-center text-[12px] font-bold text-[#94A3B8] uppercase tracking-wider" style={{ position: "sticky", top: 0, zIndex: 10, background: "#0F1520" }}>Price</th>
+            <th className="px-2 py-3 text-center text-[12px] font-bold text-[#94A3B8] uppercase tracking-wider" style={{ position: "sticky", top: 0, zIndex: 10, background: "#0F1520" }}>52W Hi</th>
+            <th className="px-2 py-3 text-center text-[12px] font-bold text-[#94A3B8] uppercase tracking-wider" style={{ position: "sticky", top: 0, zIndex: 10, background: "#0F1520" }}>% 52WH</th>
             {COLS.map((c) => (
               <th
                 key={c.key}
                 onClick={() => handleSort(c.key)}
                 className="px-1.5 py-3 text-center text-[12px] font-bold text-[#94A3B8] uppercase tracking-wider cursor-pointer hover:text-white select-none"
+                style={{ position: "sticky", top: 0, zIndex: 10, background: "#0F1520" }}
               >
                 {c.label} {sortCol === c.key && (sortDir === "desc" ? "↓" : "↑")}
               </th>
