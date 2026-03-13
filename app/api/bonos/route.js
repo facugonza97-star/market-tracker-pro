@@ -93,7 +93,7 @@ export async function GET() {
     const results = await Promise.all(
       SHEETS.map(async (name) => {
         try {
-          const res = await fetch(sheetURL(name), { next: { revalidate: 3600 } });
+          const res = await fetch(sheetURL(name), { cache: "no-store" });
           if (!res.ok) return { name, rows: [] };
           const text = await res.text();
           return { name, rows: parseSheet(text) };
