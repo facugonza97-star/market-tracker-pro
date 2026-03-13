@@ -88,6 +88,14 @@ async function parsePDF(file) {
     }
   }
 
+  // DEBUG: log raw extracted text
+  console.log("=== PDF RAW TEXT START ===");
+  allLines.forEach((line, idx) => {
+    console.log(`LINE ${idx}: [${line.items.length} items] ${line.text}`);
+  });
+  console.log("=== PDF RAW TEXT END ===");
+  console.log("Total lines extracted:", allLines.length);
+
   // Parse sections
   const sections = {};
   let currentSection = null;
