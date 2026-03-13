@@ -529,8 +529,8 @@ export default function BondPanel() {
           </div>
 
           {/* Tabla */}
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <table style={{ borderCollapse: "collapse", width: "auto", minWidth: "100%" }}>
+          <div className="bg-card border border-border rounded-xl overflow-x-auto">
+            <table style={{ borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ backgroundColor: "#0d0d1a" }}>
                   <th className="py-2 px-4 text-left text-xs font-bold text-[#94A3B8] uppercase tracking-wide whitespace-nowrap">Cupón</th>
