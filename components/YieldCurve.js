@@ -110,9 +110,6 @@ export default function YieldCurve({ treasury, full }) {
                 · {label} (LT avg: 0.85%)
               </span>
             </div>
-            <div className="mt-2 px-2">
-              <p className="text-[13px] text-text-dim leading-relaxed">• Si el spread es negativo la curva está invertida: inversores esperan menor crecimiento y tasas más bajas, prefiriendo asegurar rendimientos largos ante expectativa de recesión.</p>
-            </div>
           </div>
         );
       })()}
