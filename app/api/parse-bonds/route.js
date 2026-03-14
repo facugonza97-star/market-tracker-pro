@@ -13,9 +13,16 @@ const SHEET_NAMES = [
   "PEMEX", "Petrobras", "Brasil", "Ecopetrol", "Panama",
 ];
 
-// Mapeo de hojas del Excel a hojas del Google Sheet
-const DIRECT_SHEET_MAP = {
+// Excel sheet name → Google Sheet name (case-insensitive match on Excel side)
+const EXCEL_TO_SHEET = {
+  "URUGUAY USD": "Uruguay USD",
+  "URUGUAY PESOS": "Uruguay Pesos",
+  "NOTAS UI": "Notas UI",
+  "NOTAS PESOS": "Notas Pesos",
   "US TREASURIES": "US Treasuries",
+  "US TIPS": "US TIPS",
+  "US T BILLS": "T-bills",
+  "STRIPS": "Strips",
   "CURVA PEMEX": "PEMEX",
   "PETROBRAS": "Petrobras",
   "BRASIL": "Brasil",
@@ -23,22 +30,18 @@ const DIRECT_SHEET_MAP = {
   "PANAMA": "Panama",
 };
 
-// Secciones dentro de la hoja URUGUAY del Excel
-const URUGUAY_SECTIONS = [
-  { marker: "BONOS GLOBALES URUGUAY EN USD", target: "Uruguay USD" },
-  { marker: "BONOS GLOBALES URUGUAY EN PESOS", target: "Uruguay Pesos" },
-  { marker: "NOTAS EN UNIDADES INDEXADAS", target: "Notas UI" },
-  { marker: "NOTAS EN PESOS URUGUAYOS", target: "Notas Pesos" },
-];
-
 // Header keywords and aliases
 const HEADER_KEYWORDS = {
   EMISOR: ["EMISOR"],
   CUPON: ["CUPON", "CUPÓN", "COUPON"],
   VENCIMIENTO: ["VENCIMIENTO", "MATURITY", "VTO"],
   PRECIO: ["PRECIO", "PRICE", "PX"],
-  TIR: ["TIR", "TIR %", "YTM", "YIELD"],
+  TIR: ["TIR", "TIR%", "TIR %", "YTM", "YIELD"],
 };
+
+// ============================================================
+// Google Sheets client
+// ============================================================
 
 async function getSheetsClient() {
   const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
@@ -54,6 +57,7 @@ async function saveToGoogleSheet(parsedData) {
 
   for (const sheetName of SHEET_NAMES) {
     const bonds = parsedData[sheetName];
+    // Only update sheets that have data — leave others untouched
     if (!bonds || bonds.length === 0) continue;
 
     const rows = [
@@ -61,17 +65,21 @@ async function saveToGoogleSheet(parsedData) {
       ...bonds.map((b) => [b.emisor ?? "", b.cupon ?? "", b.vencimiento ?? "", b.precio ?? "", b.tir ?? ""]),
     ];
 
-    await sheets.spreadsheets.values.clear({
-      spreadsheetId: SHEET_ID,
-      range: `'${sheetName}'!A:E`,
-    });
+    try {
+      await sheets.spreadsheets.values.clear({
+        spreadsheetId: SHEET_ID,
+        range: `'${sheetName}'!A:E`,
+      });
 
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SHEET_ID,
-      range: `'${sheetName}'!A1`,
-      valueInputOption: "RAW",
-      requestBody: { values: rows },
-    });
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID,
+        range: `'${sheetName}'!A1`,
+        valueInputOption: "RAW",
+        requestBody: { values: rows },
+      });
+    } catch (err) {
+      console.error(`[parse-bonds] Error writing sheet "${sheetName}":`, err.message);
+    }
   }
 
   // Write timestamp to Uruguay USD!G1
@@ -82,44 +90,54 @@ async function saveToGoogleSheet(parsedData) {
   const mi = String(now.getMinutes()).padStart(2, "0");
   const timestamp = `${dd}/${mm}/${now.getFullYear()} ${hh}:${mi}`;
 
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: SHEET_ID,
-    range: "'Uruguay USD'!G1",
-    valueInputOption: "RAW",
-    requestBody: { values: [[timestamp]] },
-  });
+  try {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: "'Uruguay USD'!G1",
+      valueInputOption: "RAW",
+      requestBody: { values: [[timestamp]] },
+    });
+  } catch (err) {
+    console.error("[parse-bonds] Error writing timestamp:", err.message);
+  }
 }
 
 // ============================================================
 // Utility functions
 // ============================================================
 
-function parseNum(val) {
-  if (val === null || val === undefined || val === "") return null;
-  if (typeof val === "number") return isNaN(val) ? null : val;
+function isJunk(val) {
+  if (val === null || val === undefined) return false;
   const str = String(val).trim();
-  // Ignore Bloomberg formulas
-  if (str.startsWith("=")) return null;
-  const clean = str.replace(",", ".");
-  const n = parseFloat(clean);
+  return str.startsWith("=") || str.includes("xll") || str.includes("BDP") || str.includes("Unable");
+}
+
+function cleanVal(val) {
+  if (val === null || val === undefined || val === "") return null;
+  if (isJunk(val)) return null;
+  return val;
+}
+
+function parseNum(val) {
+  const cleaned = cleanVal(val);
+  if (cleaned === null) return null;
+  if (typeof cleaned === "number") return isNaN(cleaned) ? null : cleaned;
+  const str = String(cleaned).trim().replace(",", ".");
+  const n = parseFloat(str);
   return isNaN(n) ? null : n;
 }
 
-function isFormula(val) {
-  if (val === null || val === undefined) return false;
-  return String(val).trim().startsWith("=");
-}
-
 function formatDate(val) {
-  if (!val) return null;
+  if (val === null || val === undefined || val === "") return null;
+  // Date object from xlsx cellDates:true
   if (val instanceof Date && !isNaN(val)) {
     const d = val.getDate().toString().padStart(2, "0");
     const m = (val.getMonth() + 1).toString().padStart(2, "0");
     return `${d}/${m}/${val.getFullYear()}`;
   }
   const str = String(val).trim();
-  if (str.startsWith("=")) return null;
-  // Already DD/MM/YYYY
+  if (isJunk(str)) return null;
+  // DD/MM/YYYY
   const parts = str.split("/");
   if (parts.length === 3) {
     const dd = parseInt(parts[0]);
@@ -129,9 +147,9 @@ function formatDate(val) {
       return `${String(dd).padStart(2, "0")}/${String(mm).padStart(2, "0")}/${yyyy}`;
     }
   }
-  // Try parsing as date
+  // Try parsing as date string
   const d = new Date(str);
-  if (!isNaN(d)) {
+  if (!isNaN(d) && d.getFullYear() > 2000) {
     return formatDate(d);
   }
   return null;
@@ -153,12 +171,13 @@ function extractYear(vencimiento) {
 
 function normalizeCell(val) {
   if (val === null || val === undefined) return "";
-  return String(val).trim().toUpperCase().replace(/[áÁ]/g, "A").replace(/[óÓ]/g, "O").replace(/[úÚ]/g, "U");
+  return String(val).trim().toUpperCase()
+    .replace(/[áÁ]/g, "A").replace(/[éÉ]/g, "E")
+    .replace(/[íÍ]/g, "I").replace(/[óÓ]/g, "O").replace(/[úÚ]/g, "U");
 }
 
 function detectHeaderRow(rows) {
-  // rows is an array of arrays (raw sheet data)
-  for (let i = 0; i < Math.min(rows.length, 20); i++) {
+  for (let i = 0; i < Math.min(rows.length, 30); i++) {
     const row = rows[i];
     if (!row || !Array.isArray(row)) continue;
     const cells = row.map(normalizeCell);
@@ -198,92 +217,63 @@ function getVal(row, colMap, field) {
 }
 
 // ============================================================
-// Parse a block of rows into bonds using auto-detected headers
+// Parse rows into bonds
 // ============================================================
 
 function parseBondBlock(rows) {
-  // rows is array of arrays
   const detected = detectHeaderRow(rows);
   if (!detected) return [];
 
   const colMap = buildColumnMap(detected.cells);
   const bonds = [];
+  let skippedFirst = false;
 
   for (let i = detected.headerIndex + 1; i < rows.length; i++) {
     const row = rows[i];
     if (!row || !Array.isArray(row)) continue;
 
-    const rawEmisor = getVal(row, colMap, "EMISOR");
-    const rawCupon = getVal(row, colMap, "CUPON");
-    const rawVenc = getVal(row, colMap, "VENCIMIENTO");
-    const rawPrecio = getVal(row, colMap, "PRECIO");
-    const rawTir = getVal(row, colMap, "TIR");
+    // Skip the first data row after header (usually Bloomberg formulas)
+    if (!skippedFirst) {
+      const anyJunk = row.some((c) => isJunk(c));
+      if (anyJunk) {
+        skippedFirst = true;
+        console.log(`[parse-bonds] Skipped formula row ${i}`);
+        continue;
+      }
+      skippedFirst = true;
+    }
 
-    // Skip rows with Bloomberg formulas
-    if (isFormula(rawCupon) || isFormula(rawVenc) || isFormula(rawPrecio)) continue;
+    try {
+      const rawVenc = getVal(row, colMap, "VENCIMIENTO");
+      const vencimiento = formatDate(rawVenc);
+      if (!vencimiento) continue; // Must have valid date
 
-    // Parse vencimiento
-    const vencimiento = formatDate(rawVenc);
-    if (!vencimiento) continue;
+      const rawPrecio = getVal(row, colMap, "PRECIO");
+      const precio = parseNum(rawPrecio);
+      if (precio === null || precio === 0) continue; // Must have valid price
 
-    const cupon = parseNum(rawCupon);
-    const precio = parseNum(rawPrecio);
-    const tir = parseNum(rawTir);
+      const rawEmisor = getVal(row, colMap, "EMISOR");
+      const emisor = rawEmisor && !isJunk(rawEmisor) ? String(rawEmisor).trim() : null;
 
-    // Skip if precio is null/0 (cupon can be 0 for zero-coupon bonds)
-    if (precio === null || precio === 0) continue;
+      const rawCupon = getVal(row, colMap, "CUPON");
+      // Cupon 0 is valid (zero-coupon bonds)
+      const cupon = cleanVal(rawCupon) !== null ? parseNum(rawCupon) : null;
 
-    const emisor = rawEmisor ? String(rawEmisor).trim() : null;
+      const rawTir = getVal(row, colMap, "TIR");
+      const tir = parseNum(rawTir);
 
-    bonds.push({ emisor, cupon, vencimiento, precio, tir });
+      bonds.push({ emisor, cupon, vencimiento, precio, tir });
+    } catch (err) {
+      console.error(`[parse-bonds] Error parsing row ${i}:`, err.message);
+      continue;
+    }
   }
 
   return bonds;
 }
 
 // ============================================================
-// Parse URUGUAY sheet with multiple sections
-// ============================================================
-
-function parseUruguaySheet(sheetData) {
-  // sheetData is array of arrays
-  const result = {};
-  for (const sec of URUGUAY_SECTIONS) {
-    result[sec.target] = [];
-  }
-
-  // Find section boundaries by looking for marker strings in any cell
-  const sectionStarts = [];
-  for (let i = 0; i < sheetData.length; i++) {
-    const row = sheetData[i];
-    if (!row) continue;
-    const joined = row.map((c) => normalizeCell(c)).join(" ");
-    for (const sec of URUGUAY_SECTIONS) {
-      if (joined.includes(sec.marker.toUpperCase())) {
-        sectionStarts.push({ index: i, target: sec.target });
-      }
-    }
-  }
-
-  // Sort by index
-  sectionStarts.sort((a, b) => a.index - b.index);
-
-  // Extract each section's rows and parse
-  for (let s = 0; s < sectionStarts.length; s++) {
-    const start = sectionStarts[s].index;
-    const end = s + 1 < sectionStarts.length ? sectionStarts[s + 1].index : sheetData.length;
-    const sectionRows = sheetData.slice(start, end);
-    const bonds = parseBondBlock(sectionRows);
-    if (bonds.length > 0) {
-      result[sectionStarts[s].target] = bonds;
-    }
-  }
-
-  return result;
-}
-
-// ============================================================
-// Process for frontend (same format as before)
+// Process for frontend (same format as BondPanel expects)
 // ============================================================
 
 function processForFrontend(parsedData) {
@@ -296,8 +286,7 @@ function processForFrontend(parsedData) {
     for (const b of bonds) {
       const year = extractYear(b.vencimiento);
       if (!year) continue;
-      // For frontend, require TIR
-      if (b.tir === null) continue;
+      if (b.tir === null) continue; // Frontend requires TIR
       processed.push({
         emisor: b.emisor,
         cupon: b.cupon,
@@ -330,70 +319,35 @@ export async function POST(request) {
     console.log("[parse-bonds] Workbook sheets:", workbook.SheetNames.join(", "));
 
     const parsedData = {};
-    // Initialize all targets
-    for (const name of SHEET_NAMES) {
-      parsedData[name] = [];
-    }
 
     for (const excelSheet of workbook.SheetNames) {
-      const sheet = workbook.Sheets[excelSheet];
-      const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, blankrows: false });
-      const nameUpper = excelSheet.trim().toUpperCase();
+      try {
+        const nameUpper = excelSheet.trim().toUpperCase();
 
-      // Check if this is the URUGUAY sheet
-      if (nameUpper === "URUGUAY" || nameUpper === "URUGUAY USD" || nameUpper.includes("URUGUAY")) {
-        // Check if it has section markers
-        const joined = rawRows.map((r) => (r || []).map((c) => normalizeCell(c)).join(" ")).join(" ");
-        const hasMarkers = URUGUAY_SECTIONS.some((sec) => joined.includes(sec.marker.toUpperCase()));
-
-        if (hasMarkers) {
-          const uruguayResult = parseUruguaySheet(rawRows);
-          for (const [target, bonds] of Object.entries(uruguayResult)) {
-            if (bonds.length > 0) {
-              parsedData[target] = bonds;
-              console.log(`[parse-bonds] URUGUAY section "${target}": ${bonds.length} bonds`);
-            }
-          }
+        // Find target sheet name
+        const target = EXCEL_TO_SHEET[nameUpper];
+        if (!target) {
+          console.log(`[parse-bonds] Skipping unmapped sheet: "${excelSheet}"`);
           continue;
         }
-      }
 
-      // Check direct sheet mapping
-      const mappedTarget = DIRECT_SHEET_MAP[nameUpper];
-      if (mappedTarget) {
+        const sheet = workbook.Sheets[excelSheet];
+        const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, blankrows: false });
+
         const bonds = parseBondBlock(rawRows);
         if (bonds.length > 0) {
-          parsedData[mappedTarget] = bonds;
-          console.log(`[parse-bonds] Sheet "${excelSheet}" → "${mappedTarget}": ${bonds.length} bonds`);
+          parsedData[target] = bonds;
+          console.log(`[parse-bonds] "${excelSheet}" → "${target}": ${bonds.length} bonds`);
+        } else {
+          console.log(`[parse-bonds] "${excelSheet}" → "${target}": 0 bonds (no valid data)`);
         }
+      } catch (err) {
+        console.error(`[parse-bonds] Error processing sheet "${excelSheet}":`, err.message);
         continue;
-      }
-
-      // Try exact match with SHEET_NAMES (case-insensitive)
-      const exactMatch = SHEET_NAMES.find((s) => s.toUpperCase() === nameUpper);
-      if (exactMatch) {
-        const bonds = parseBondBlock(rawRows);
-        if (bonds.length > 0) {
-          parsedData[exactMatch] = bonds;
-          console.log(`[parse-bonds] Sheet "${excelSheet}" (exact): ${bonds.length} bonds`);
-        }
-        continue;
-      }
-
-      // Try partial match
-      const partialMatch = SHEET_NAMES.find((s) =>
-        nameUpper.includes(s.toUpperCase()) || s.toUpperCase().includes(nameUpper)
-      );
-      if (partialMatch && parsedData[partialMatch].length === 0) {
-        const bonds = parseBondBlock(rawRows);
-        if (bonds.length > 0) {
-          parsedData[partialMatch] = bonds;
-          console.log(`[parse-bonds] Sheet "${excelSheet}" → "${partialMatch}" (partial): ${bonds.length} bonds`);
-        }
       }
     }
 
-    // Save to Google Sheet
+    // Save to Google Sheet (only sheets with data)
     try {
       await saveToGoogleSheet(parsedData);
       console.log("[parse-bonds] Saved to Google Sheet");
@@ -408,7 +362,8 @@ export async function POST(request) {
 
     return NextResponse.json(sections);
   } catch (error) {
-    console.error("[parse-bonds] ERROR:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[parse-bonds] FATAL ERROR:", error.message);
+    // Never 500 — return whatever we have
+    return NextResponse.json({});
   }
 }
