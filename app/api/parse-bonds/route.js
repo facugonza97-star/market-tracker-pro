@@ -226,21 +226,16 @@ function parseBondBlock(rows) {
 
   const colMap = buildColumnMap(detected.cells);
   const bonds = [];
-  let skippedFirst = false;
 
   for (let i = detected.headerIndex + 1; i < rows.length; i++) {
     const row = rows[i];
     if (!row || !Array.isArray(row)) continue;
 
-    // Skip the first data row after header (usually Bloomberg formulas)
-    if (!skippedFirst) {
-      const anyJunk = row.some((c) => isJunk(c));
-      if (anyJunk) {
-        skippedFirst = true;
-        console.log(`[parse-bonds] Skipped formula row ${i}`);
-        continue;
-      }
-      skippedFirst = true;
+    // Skip any row where >50% of cells are junk (formula rows)
+    const nonEmpty = row.filter((c) => c !== null && c !== undefined && c !== "");
+    if (nonEmpty.length > 0 && nonEmpty.filter((c) => isJunk(c)).length > nonEmpty.length * 0.5) {
+      console.log(`[parse-bonds] Skipped formula row ${i}`);
+      continue;
     }
 
     try {
@@ -250,7 +245,7 @@ function parseBondBlock(rows) {
 
       const rawPrecio = getVal(row, colMap, "PRECIO");
       const precio = parseNum(rawPrecio);
-      if (precio === null || precio === 0) continue; // Must have valid price
+      if (precio === null) continue; // Must have valid price
 
       const rawEmisor = getVal(row, colMap, "EMISOR");
       const emisor = rawEmisor && !isJunk(rawEmisor) ? String(rawEmisor).trim() : null;
@@ -286,7 +281,12 @@ function processForFrontend(parsedData) {
     for (const b of bonds) {
       const year = extractYear(b.vencimiento);
       if (!year) continue;
-      if (b.tir === null) continue; // Frontend requires TIR
+
+      const hoy = new Date();
+      const [dd, mm, yyyy] = b.vencimiento.split("/").map(Number);
+      const vencDate = new Date(yyyy, mm - 1, dd);
+      if (vencDate <= hoy) continue; // Ignorar bonos ya vencidos
+
       processed.push({
         emisor: b.emisor,
         cupon: b.cupon,
