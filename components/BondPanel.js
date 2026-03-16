@@ -96,10 +96,13 @@ function handlePrint({ activeData, activeConfig, compareData, compareConfig, isC
     // Axes
     let svg = `<line x1="50" y1="15" x2="50" y2="140" stroke="#ccc" stroke-width="0.5"/>`;
     svg += `<line x1="50" y1="140" x2="680" y2="140" stroke="#ccc" stroke-width="0.5"/>`;
-    // Y-axis labels
-    for (let j = 0; j < 4; j++) {
-      const val = minY + (maxY - minY) * j / 3;
-      svg += `<text x="45" y="${py(val).toFixed(1)}" text-anchor="end" font-size="8" fill="#999" font-family="Arial">${val.toFixed(1)}%</text>`;
+    // 5 valores distribuidos entre minY y maxY
+    const ySteps = 5;
+    for (let i = 0; i <= ySteps; i++) {
+      const val = minY + (maxY - minY) * (i / ySteps);
+      const yPos = 140 - ((val - minY) / (maxY - minY)) * 125;
+      svg += `<text x="48" y="${yPos.toFixed(1)}" text-anchor="end" font-size="8" fill="#999" font-family="Arial">${val.toFixed(2)}%</text>`;
+      svg += `<line x1="52" y1="${yPos.toFixed(1)}" x2="670" y2="${yPos.toFixed(1)}" stroke="#eee" stroke-width="0.5"/>`;
     }
     const pts1 = data1.filter(d => d.tir != null).map(d => `${px(d.year).toFixed(1)},${py(d.tir).toFixed(1)}`).join(" ");
     svg += `<polyline points="${pts1}" fill="none" stroke="${color1}" stroke-width="2.5"/>`;
