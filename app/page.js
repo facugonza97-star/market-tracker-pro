@@ -53,8 +53,29 @@ export default function Home() {
 
   useEffect(() => {
     fetchAll();
-    const interval = setInterval(fetchAll, 5 * 60 * 1000); // refresh every 5 min
-    return () => clearInterval(interval);
+
+    const startInterval = () => {
+      return setInterval(() => {
+        if (document.visibilityState === "visible") {
+          fetchAll();
+        }
+      }, 5 * 60 * 1000);
+    };
+
+    let interval = startInterval();
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchAll(); // actualizar inmediatamente al volver
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [fetchAll]);
 
   return (
