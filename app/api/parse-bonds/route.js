@@ -83,7 +83,7 @@ async function saveToGoogleSheet(parsedData) {
   }
 
   // Write timestamp to Uruguay USD!G1
-  const now = new Date();
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Montevideo" }));
   const dd = String(now.getDate()).padStart(2, "0");
   const mm = String(now.getMonth() + 1).padStart(2, "0");
   const hh = String(now.getHours()).padStart(2, "0");
