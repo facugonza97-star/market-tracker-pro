@@ -35,7 +35,8 @@ const HEADER_KEYWORDS = {
   EMISOR: ["EMISOR"],
   CUPON: ["CUPON", "CUPÓN", "COUPON"],
   VENCIMIENTO: ["VENCIMIENTO", "MATURITY", "VTO"],
-  PRECIO: ["PRECIO", "PRICE", "PX"],
+  BID: ["BID PRICE", "BID", "PRECIO BID"],
+  ASK: ["ASK PRICE", "ASK", "PRECIO ASK", "PRECIO", "PRICE", "PX"],
   TIR: ["TIR", "TIR%", "TIR %", "YTM", "YIELD"],
 };
 
@@ -61,14 +62,14 @@ async function saveToGoogleSheet(parsedData) {
     if (!bonds || bonds.length === 0) continue;
 
     const rows = [
-      ["EMISOR", "CUPON", "VENCIMIENTO", "PRECIO", "TIR"],
-      ...bonds.map((b) => [b.emisor ?? "", b.cupon ?? "", b.vencimiento ?? "", b.precio ?? "", b.tir ?? ""]),
+      ["EMISOR", "CUPON", "VENCIMIENTO", "ASK", "BID", "TIR"],
+      ...bonds.map((b) => [b.emisor ?? "", b.cupon ?? "", b.vencimiento ?? "", b.ask ?? "", b.bid ?? "", b.tir ?? ""]),
     ];
 
     try {
       await sheets.spreadsheets.values.clear({
         spreadsheetId: SHEET_ID,
-        range: `'${sheetName}'!A:E`,
+        range: `'${sheetName}'!A:F`,
       });
 
       await sheets.spreadsheets.values.update({
@@ -243,9 +244,9 @@ function parseBondBlock(rows) {
       const vencimiento = formatDate(rawVenc);
       if (!vencimiento) continue; // Must have valid date
 
-      const rawPrecio = getVal(row, colMap, "PRECIO");
-      const precio = parseNum(rawPrecio);
-      if (precio === null) continue; // Must have valid price
+      const bid = parseNum(getVal(row, colMap, "BID"));
+      const ask = parseNum(getVal(row, colMap, "ASK"));
+      if (ask === null) continue; // Must have valid ask price
 
       const rawEmisor = getVal(row, colMap, "EMISOR");
       const emisor = rawEmisor && !isJunk(rawEmisor) ? String(rawEmisor).trim() : null;
@@ -257,7 +258,7 @@ function parseBondBlock(rows) {
       const rawTir = getVal(row, colMap, "TIR");
       const tir = parseNum(rawTir);
 
-      bonds.push({ emisor, cupon, vencimiento, precio, tir });
+      bonds.push({ emisor, cupon, vencimiento, ask, bid, tir });
     } catch (err) {
       console.error(`[parse-bonds] Error parsing row ${i}:`, err.message);
       continue;
@@ -292,7 +293,8 @@ function processForFrontend(parsedData) {
         cupon: b.cupon,
         vencimiento: b.vencimiento,
         year,
-        precio: b.precio,
+        precio: b.ask,
+        bid: b.bid,
         tir: b.tir,
       });
     }

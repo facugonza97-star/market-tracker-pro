@@ -67,22 +67,23 @@ function parseSheet(text) {
   const lines = text.split("\n").filter((l) => l.trim());
   if (lines.length < 2) return [];
 
-  // Columns: EMISOR, CUPON, VENCIMIENTO, PRECIO, TIR
+  // Columns: EMISOR, CUPON, VENCIMIENTO, ASK, BID, TIR
   const rows = [];
   for (let i = 1; i < lines.length; i++) {
     const cells = parseCSVLine(lines[i]);
-    if (cells.length < 5) continue;
+    if (cells.length < 6) continue;
 
     const emisor = (cells[0] || "").replace(/"/g, "").trim();
     const cupon = parseNum(cells[1]);
     const vencimiento = (cells[2] || "").replace(/"/g, "").trim();
     const precio = parseNum(cells[3]);
-    const tir = parseNum(cells[4]);
+    const bid = parseNum(cells[4]);
+    const tir = parseNum(cells[5]);
     const year = extractYear(vencimiento);
 
     if (tir === null || !year) continue;
 
-    rows.push({ emisor: emisor || null, cupon, vencimiento, year, precio, tir });
+    rows.push({ emisor: emisor || null, cupon, vencimiento, year, precio, bid, tir });
   }
 
   rows.sort((a, b) => a.year - b.year);
