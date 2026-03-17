@@ -85,6 +85,7 @@ function buildCurveSVG(data1, color1, label1, data2, color2, label2, comparing) 
   if (!tirs.length || !years.length) return "";
   const minY = Math.min(...tirs), maxY = Math.max(...tirs);
   const minX = Math.min(...years), maxX = Math.max(...years);
+  const yDecimals = (maxY - minY) < 0.5 ? 3 : 2;
   const px = y => maxX === minX ? 350 : 55 + ((y - minX) / (maxX - minX)) * 615;
   const py = t => maxY === minY ? 80 : 130 - ((t - minY) / (maxY - minY)) * 100;
   let svg = `<line x1="50" y1="15" x2="50" y2="140" stroke="#ccc" stroke-width="0.5"/>`;
@@ -93,7 +94,7 @@ function buildCurveSVG(data1, color1, label1, data2, color2, label2, comparing) 
   for (let i = 0; i <= ySteps; i++) {
     const val = minY + (maxY - minY) * (i / ySteps);
     const yPos = 140 - ((val - minY) / (maxY - minY)) * 125;
-    svg += `<text x="48" y="${yPos.toFixed(1)}" text-anchor="end" font-size="8" fill="#999" font-family="Arial">${val.toFixed(2)}%</text>`;
+    svg += `<text x="48" y="${yPos.toFixed(1)}" text-anchor="end" font-size="8" fill="#999" font-family="Arial">${val.toFixed(yDecimals)}%</text>`;
     svg += `<line x1="52" y1="${yPos.toFixed(1)}" x2="670" y2="${yPos.toFixed(1)}" stroke="#eee" stroke-width="0.5"/>`;
   }
   const pts1 = data1.filter(d => d.tir != null).map(d => `${px(d.year).toFixed(1)},${py(d.tir).toFixed(1)}`).join(" ");
