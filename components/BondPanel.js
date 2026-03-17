@@ -78,48 +78,67 @@ function stripEmoji(str) {
   return str.replace(/[\u{1F300}-\u{1FFFF}]/gu, "").trim();
 }
 
+function buildCurveSVG(data1, color1, label1, data2, color2, label2, comparing) {
+  const allData = [...data1, ...(comparing && data2 ? data2 : [])];
+  const tirs = allData.map(d => d.tir).filter(v => v != null);
+  const years = allData.map(d => d.year).filter(v => v != null);
+  if (!tirs.length || !years.length) return "";
+  const minY = Math.min(...tirs), maxY = Math.max(...tirs);
+  const minX = Math.min(...years), maxX = Math.max(...years);
+  const px = y => maxX === minX ? 350 : 55 + ((y - minX) / (maxX - minX)) * 615;
+  const py = t => maxY === minY ? 80 : 130 - ((t - minY) / (maxY - minY)) * 100;
+  let svg = `<line x1="50" y1="15" x2="50" y2="140" stroke="#ccc" stroke-width="0.5"/>`;
+  svg += `<line x1="50" y1="140" x2="680" y2="140" stroke="#ccc" stroke-width="0.5"/>`;
+  const ySteps = 5;
+  for (let i = 0; i <= ySteps; i++) {
+    const val = minY + (maxY - minY) * (i / ySteps);
+    const yPos = 140 - ((val - minY) / (maxY - minY)) * 125;
+    svg += `<text x="48" y="${yPos.toFixed(1)}" text-anchor="end" font-size="8" fill="#999" font-family="Arial">${val.toFixed(2)}%</text>`;
+    svg += `<line x1="52" y1="${yPos.toFixed(1)}" x2="670" y2="${yPos.toFixed(1)}" stroke="#eee" stroke-width="0.5"/>`;
+  }
+  const pts1 = data1.filter(d => d.tir != null).map(d => `${px(d.year).toFixed(1)},${py(d.tir).toFixed(1)}`).join(" ");
+  svg += `<polyline points="${pts1}" fill="none" stroke="${color1}" stroke-width="2.5"/>`;
+  data1.filter(d => d.tir != null).forEach(d => { svg += `<circle cx="${px(d.year).toFixed(1)}" cy="${py(d.tir).toFixed(1)}" r="3" fill="${color1}"/>`; });
+  if (comparing && data2) {
+    const pts2 = data2.filter(d => d.tir != null).map(d => `${px(d.year).toFixed(1)},${py(d.tir).toFixed(1)}`).join(" ");
+    svg += `<polyline points="${pts2}" fill="none" stroke="${color2}" stroke-width="2.5" stroke-dasharray="6,3"/>`;
+    data2.filter(d => d.tir != null).forEach(d => { svg += `<circle cx="${px(d.year).toFixed(1)}" cy="${py(d.tir).toFixed(1)}" r="3" fill="${color2}"/>`; });
+    svg += `<rect x="10" y="8" width="16" height="3" fill="${color1}"/><text x="30" y="13" font-size="10" fill="#444" font-family="Arial">${label1}</text>`;
+    svg += `<rect x="10" y="20" width="16" height="3" fill="${color2}"/><text x="30" y="25" font-size="10" fill="#444" font-family="Arial">${label2}</text>`;
+  }
+  const uniqYears = [...new Set(data1.map(d => d.year))];
+  const step = Math.ceil(uniqYears.length / 6);
+  uniqYears.filter((_, i) => i % step === 0 || i === uniqYears.length - 1).forEach(y => { svg += `<text x="${px(y).toFixed(1)}" y="150" text-anchor="middle" font-size="9" fill="#999" font-family="Arial">${y}</text>`; });
+  return svg;
+}
+
 function handlePrint({ activeData, activeConfig, compareData, compareConfig, isComparing, lastUpdate }) {
   const today = new Date();
   const fecha = `${String(today.getDate()).padStart(2,"0")}/${String(today.getMonth()+1).padStart(2,"0")}/${today.getFullYear()}`;
   const activeLabel = stripEmoji(activeConfig.label);
   const compareLabel = isComparing ? stripEmoji(compareConfig.label) : "";
   const tableRows = (data, color) => data.map(b => `<tr><td>${b.emisor ?? "—"}</td><td>${b.cupon !== null ? b.cupon.toFixed(3)+"%" : "—"}</td><td>${b.vencimiento}</td><td style="text-align:right">${b.precio?.toFixed(2) ?? "—"}</td><td style="text-align:right;color:${color};font-weight:600">${b.tir != null ? b.tir.toFixed(2)+"%" : "—"}</td></tr>`).join("");
-  const buildCurveSVG = (data1, color1, data2, color2, comparing) => {
-    const allData = [...data1, ...(comparing && data2 ? data2 : [])];
-    const tirs = allData.map(d => d.tir).filter(v => v != null);
-    const years = allData.map(d => d.year).filter(v => v != null);
-    if (!tirs.length || !years.length) return "";
-    const minY = Math.min(...tirs), maxY = Math.max(...tirs);
-    const minX = Math.min(...years), maxX = Math.max(...years);
-    const px = y => maxX === minX ? 350 : 55 + ((y - minX) / (maxX - minX)) * 615;
-    const py = t => maxY === minY ? 80 : 130 - ((t - minY) / (maxY - minY)) * 100;
-    // Axes
-    let svg = `<line x1="50" y1="15" x2="50" y2="140" stroke="#ccc" stroke-width="0.5"/>`;
-    svg += `<line x1="50" y1="140" x2="680" y2="140" stroke="#ccc" stroke-width="0.5"/>`;
-    // 5 valores distribuidos entre minY y maxY
-    const ySteps = 5;
-    for (let i = 0; i <= ySteps; i++) {
-      const val = minY + (maxY - minY) * (i / ySteps);
-      const yPos = 140 - ((val - minY) / (maxY - minY)) * 125;
-      svg += `<text x="48" y="${yPos.toFixed(1)}" text-anchor="end" font-size="8" fill="#999" font-family="Arial">${val.toFixed(2)}%</text>`;
-      svg += `<line x1="52" y1="${yPos.toFixed(1)}" x2="670" y2="${yPos.toFixed(1)}" stroke="#eee" stroke-width="0.5"/>`;
-    }
-    const pts1 = data1.filter(d => d.tir != null).map(d => `${px(d.year).toFixed(1)},${py(d.tir).toFixed(1)}`).join(" ");
-    svg += `<polyline points="${pts1}" fill="none" stroke="${color1}" stroke-width="2.5"/>`;
-    data1.filter(d => d.tir != null).forEach(d => { svg += `<circle cx="${px(d.year).toFixed(1)}" cy="${py(d.tir).toFixed(1)}" r="3" fill="${color1}"/>`; });
-    if (comparing && data2) {
-      const pts2 = data2.filter(d => d.tir != null).map(d => `${px(d.year).toFixed(1)},${py(d.tir).toFixed(1)}`).join(" ");
-      svg += `<polyline points="${pts2}" fill="none" stroke="${color2}" stroke-width="2.5" stroke-dasharray="6,3"/>`;
-      data2.filter(d => d.tir != null).forEach(d => { svg += `<circle cx="${px(d.year).toFixed(1)}" cy="${py(d.tir).toFixed(1)}" r="3" fill="${color2}"/>`; });
-      svg += `<rect x="10" y="8" width="16" height="3" fill="${color1}"/><text x="30" y="13" font-size="10" fill="#444" font-family="Arial">${activeLabel}</text>`;
-      svg += `<rect x="10" y="20" width="16" height="3" fill="${color2}"/><text x="30" y="25" font-size="10" fill="#444" font-family="Arial">${compareLabel}</text>`;
-    }
-    const uniqYears = [...new Set(data1.map(d => d.year))];
-    const step = Math.ceil(uniqYears.length / 6);
-    uniqYears.filter((_, i) => i % step === 0 || i === uniqYears.length - 1).forEach(y => { svg += `<text x="${px(y).toFixed(1)}" y="150" text-anchor="middle" font-size="9" fill="#999" font-family="Arial">${y}</text>`; });
-    return svg;
-  };
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${activeLabel} — Curva de Rendimiento</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:11px;color:#1a1a2e;padding:28px 32px}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:12px;border-bottom:1.5px solid #1a1a2e}.header h1{font-size:20px;font-weight:700;margin-bottom:3px}.header p{font-size:11px;color:#666}.logo{font-size:15px;font-weight:700;text-align:right}.logo span{display:block;font-size:9px;font-weight:400;color:#888}.section-title{font-size:9px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}.chart-area{background:#f8f9fb;border:.5px solid #e8e8e8;border-radius:6px;height:200px;margin-bottom:14px;overflow:hidden}table{width:100%;border-collapse:collapse;font-size:10px;margin-bottom:4px}thead tr{border-bottom:1px solid #1a1a2e}thead th{padding:5px 6px;text-align:left;font-size:9px;font-weight:700;color:#555;text-transform:uppercase}tbody tr{border-bottom:.5px solid #f0f0f0}tbody td{padding:4px 6px}.section-sep{margin-top:14px}.footer{margin-top:14px;padding-top:8px;border-top:.5px solid #e0e0e0;display:flex;justify-content:space-between}.footer p{font-size:9px;color:#aaa}@media print{body{padding:16px 20px}@page{margin:.8cm;size:A4}}</style></head><body><div class="header"><div><h1>${activeLabel}${isComparing ? " — comparado con "+compareLabel : ""}</h1><p>Curva de Rendimiento · Fecha: ${fecha}${lastUpdate ? " · Actualización: "+lastUpdate : ""} · Precios indicativos</p></div><div class="logo">Gastón Bengochea<span>Corredor de Bolsa</span></div></div><div class="section-title">Curva de rendimiento</div><div class="chart-area"><svg viewBox="0 0 700 160" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">${buildCurveSVG(activeData, activeConfig.color, compareData, compareConfig?.color, isComparing)}</svg></div><div class="section-title">${activeLabel} — Listado de bonos</div><table><thead><tr><th>Emisor</th><th>Cupón</th><th>Vencimiento</th><th style="text-align:right">Precio</th><th style="text-align:right">TIR</th></tr></thead><tbody>${tableRows(activeData, activeConfig.color)}</tbody></table>${isComparing && compareData ? `<div class="section-sep"><div class="section-title">${compareLabel} — Listado de bonos</div><table><thead><tr><th>Emisor</th><th>Cupón</th><th>Vencimiento</th><th style="text-align:right">Precio</th><th style="text-align:right">TIR</th></tr></thead><tbody>${tableRows(compareData, compareConfig.color)}</tbody></table></div>` : ""}<div class="footer"><p>Gastón Bengochea Corredor de Bolsa · Precios indicativos, no constituyen oferta de compraventa</p><p>${fecha}</p></div><script>window.onload=()=>window.print();<\/script></body></html>`;
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${activeLabel} — Curva de Rendimiento</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:11px;color:#1a1a2e;padding:28px 32px}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:12px;border-bottom:1.5px solid #1a1a2e}.header h1{font-size:20px;font-weight:700;margin-bottom:3px}.header p{font-size:11px;color:#666}.logo{font-size:15px;font-weight:700;text-align:right}.logo span{display:block;font-size:9px;font-weight:400;color:#888}.section-title{font-size:9px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}.chart-area{background:#f8f9fb;border:.5px solid #e8e8e8;border-radius:6px;height:200px;margin-bottom:14px;overflow:hidden}table{width:100%;border-collapse:collapse;font-size:10px;margin-bottom:4px}thead tr{border-bottom:1px solid #1a1a2e}thead th{padding:5px 6px;text-align:left;font-size:9px;font-weight:700;color:#555;text-transform:uppercase}tbody tr{border-bottom:.5px solid #f0f0f0}tbody td{padding:4px 6px}.section-sep{margin-top:14px}.footer{margin-top:14px;padding-top:8px;border-top:.5px solid #e0e0e0;display:flex;justify-content:space-between}.footer p{font-size:9px;color:#aaa}@media print{body{padding:16px 20px}@page{margin:.8cm;size:A4}}</style></head><body><div class="header"><div><h1>${activeLabel}${isComparing ? " — comparado con "+compareLabel : ""}</h1><p>Curva de Rendimiento · Fecha: ${fecha}${lastUpdate ? " · Actualización: "+lastUpdate : ""} · Precios indicativos</p></div><div class="logo">Gastón Bengochea<span>Corredor de Bolsa</span></div></div><div class="section-title">Curva de rendimiento</div><div class="chart-area"><svg viewBox="0 0 700 160" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">${buildCurveSVG(activeData, activeConfig.color, activeLabel, compareData, compareConfig?.color, compareLabel, isComparing)}</svg></div><div class="section-title">${activeLabel} — Listado de bonos</div><table><thead><tr><th>Emisor</th><th>Cupón</th><th>Vencimiento</th><th style="text-align:right">Precio</th><th style="text-align:right">TIR</th></tr></thead><tbody>${tableRows(activeData, activeConfig.color)}</tbody></table>${isComparing && compareData ? `<div class="section-sep"><div class="section-title">${compareLabel} — Listado de bonos</div><table><thead><tr><th>Emisor</th><th>Cupón</th><th>Vencimiento</th><th style="text-align:right">Precio</th><th style="text-align:right">TIR</th></tr></thead><tbody>${tableRows(compareData, compareConfig.color)}</tbody></table></div>` : ""}<div class="footer"><p>Gastón Bengochea Corredor de Bolsa · Precios indicativos, no constituyen oferta de compraventa</p><p>${fecha}</p></div><script>window.onload=()=>window.print();<\/script></body></html>`;
+  const win = window.open("", "_blank");
+  if (win) { win.document.write(html); win.document.close(); }
+}
+
+function handlePrintAll({ sections, lastUpdate }) {
+  const today = new Date();
+  const fecha = `${String(today.getDate()).padStart(2,"0")}/${String(today.getMonth()+1).padStart(2,"0")}/${today.getFullYear()}`;
+  const sectionKeys = Object.keys(sections).filter(k => sections[k].length > 0);
+  const tableRows = (data) => data.map(b => `<tr><td>${b.emisor ?? "—"}</td><td>${b.cupon !== null ? b.cupon.toFixed(3)+"%" : "—"}</td><td>${b.vencimiento}</td><td style="text-align:right">${b.precio?.toFixed(2) ?? "—"}</td><td style="text-align:right;font-weight:600">${b.tir != null ? b.tir.toFixed(2)+"%" : "—"}</td></tr>`).join("");
+  let body = "";
+  sectionKeys.forEach((key, idx) => {
+    const cfg = SECTION_CONFIG[key] || { label: key, color: "#5B8DEF" };
+    const label = stripEmoji(cfg.label);
+    const data = sections[key];
+    if (idx > 0) body += `<div class="sep"></div>`;
+    body += `<div class="emisor-title">${label}</div>`;
+    body += `<div class="chart-area"><svg viewBox="0 0 700 160" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">${buildCurveSVG(data, cfg.color, label, null, null, "", false)}</svg></div>`;
+    body += `<table><thead><tr><th>Emisor</th><th>Cupón</th><th>Vencimiento</th><th style="text-align:right">Precio</th><th style="text-align:right">TIR</th></tr></thead><tbody>${tableRows(data)}</tbody></table>`;
+  });
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Reporte Completo de Bonos</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:10px;color:#1a1a2e;padding:28px 36px}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:12px;border-bottom:1.5px solid #1a1a2e}.header h1{font-size:18px;font-weight:700;margin-bottom:3px}.header p{font-size:10px;color:#666}.logo{font-size:15px;font-weight:700;text-align:right}.logo span{display:block;font-size:9px;font-weight:400;color:#888}.emisor-title{font-size:13px;font-weight:700;margin-bottom:6px}.chart-area{background:#f8f9fb;border:.5px solid #e8e8e8;border-radius:6px;height:140px;margin-bottom:10px;overflow:hidden}table{width:100%;border-collapse:collapse;font-size:10px;margin-bottom:4px}thead tr{border-bottom:1px solid #1a1a2e}thead th{padding:4px 6px;text-align:left;font-size:9px;font-weight:700;color:#555;text-transform:uppercase}tbody tr{border-bottom:.5px solid #f0f0f0}tbody td{padding:3px 6px}.sep{border-top:.5px solid #ddd;margin:16px 0}.footer{margin-top:18px;padding-top:8px;border-top:.5px solid #e0e0e0;display:flex;justify-content:space-between}.footer p{font-size:9px;color:#aaa}@media print{body{padding:16px 20px}@page{margin:1cm;size:A4}}</style></head><body><div class="header"><div><h1>Market Tracker — Reporte Completo de Bonos</h1><p>Fecha: ${fecha}${lastUpdate ? " · Última actualización: "+lastUpdate : ""}</p></div><div class="logo">Gastón Bengochea<span>Corredor de Bolsa</span></div></div>${body}<div class="footer"><p>Gastón Bengochea Corredor de Bolsa · Precios indicativos, no constituyen oferta de compraventa</p><p>${fecha}</p></div><script>window.onload=()=>window.print();<\/script></body></html>`;
   const win = window.open("", "_blank");
   if (win) { win.document.write(html); win.document.close(); }
 }
@@ -238,10 +257,20 @@ export default function BondPanel() {
       {tirModal && <TIRModal bond={tirModal} activeConfig={activeConfig} onClose={() => setTirModal(null)} />}
       <div className="flex items-center justify-between">
         <span className="text-[20px] font-semibold text-white">Bonos</span>
-        <label className={`bg-accent text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-accent/80 transition cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
-          {uploading ? "Procesando..." : "📊 Subir Excel de Bonos"}
-          <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleUpload} disabled={uploading} />
-        </label>
+        <div className="flex items-center gap-2">
+          {sectionKeys.length > 0 && (
+            <button
+              onClick={() => handlePrintAll({ sections, lastUpdate })}
+              className="border border-white/20 text-text-sec px-4 py-2 rounded-lg text-sm font-semibold hover:text-white hover:border-white/40 transition"
+            >
+              📄 Imprimir Todo
+            </button>
+          )}
+          <label className={`bg-accent text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-accent/80 transition cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
+            {uploading ? "Procesando..." : "📊 Subir Excel de Bonos"}
+            <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleUpload} disabled={uploading} />
+          </label>
+        </div>
       </div>
       {lastUpdate && <div className="text-sm text-white">Última actualización precios bonos: {lastUpdate}</div>}
       {error && <div className="text-center text-neg text-sm py-2">{error}</div>}
