@@ -336,7 +336,7 @@ function printTicket({ bond, precio, nominal, trader, comision, comisionOn, r, f
     ${comisionOn ? `<div class="row"><span class="lbl">Comisión</span><span class="val">${comision}%</span></div>` : ""}
   </div>
   <div class="section">
-    <div class="section-title">Liquidación</div>
+    <div class="section-title">Resumen</div>
 <div class="row"><span class="lbl">Principal</span><span class="val">USD ${fmt(r.principal)}</span></div>
     <div class="row"><span class="lbl">Cupón corrido</span><span class="val">USD ${fmt(r.accrued)}</span></div>
     ${comisionOn ? `<div class="row"><span class="lbl">Comisión</span><span class="val">USD ${fmt(r.comisionUSD)}</span></div>` : ""}
