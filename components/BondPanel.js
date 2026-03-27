@@ -280,7 +280,7 @@ function SingleTooltip({ active, payload }) {
   return (<div style={{ background: "#0F1520", border: "1px solid #2A3A50", borderRadius: 8, padding: "8px 12px" }}><div style={{ color: "#94A3B8", fontSize: 11, marginBottom: 4 }}>Vencimiento: {d.vencimiento}</div>{d.cupon !== null && <div style={{ color: "#CBD5E0", fontSize: 12 }}>Cupon: {d.cupon.toFixed(3)}%</div>}<div style={{ color: "#CBD5E0", fontSize: 12 }}>Bid: {d.bid?.toFixed(2) ?? "—"} · Ask: {d.ask?.toFixed(2) ?? "—"}</div><div style={{ color: "#fff", fontSize: 14, fontWeight: 600, fontFamily: "monospace" }}>TIR: {d.tir?.toFixed(2)}%</div></div>);
 }
 
-function printTicket({ bond, precio, nominal, trader, comision, comisionOn, r, fecha, fechaSettle }) {
+function printTicket({ bond, precio, nominal, trader, comision, comisionOn, r, fecha }) {
   const fmt = (n) => n?.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Ticket de Operación</title>
   <style>
@@ -337,8 +337,7 @@ function printTicket({ bond, precio, nominal, trader, comision, comisionOn, r, f
   </div>
   <div class="section">
     <div class="section-title">Liquidación</div>
-    <div class="row"><span class="lbl">Fecha Trade</span><span class="val">${fecha}</span></div>
-    <div class="row"><span class="lbl">Principal</span><span class="val">USD ${fmt(r.principal)}</span></div>
+<div class="row"><span class="lbl">Principal</span><span class="val">USD ${fmt(r.principal)}</span></div>
     <div class="row"><span class="lbl">Cupón corrido</span><span class="val">USD ${fmt(r.accrued)}</span></div>
     ${comisionOn ? `<div class="row"><span class="lbl">Comisión</span><span class="val">USD ${fmt(r.comisionUSD)}</span></div>` : ""}
     <div class="tir-row"><span class="lbl">TIR (mercado)</span><span class="val">${r.tir}%</span></div>
@@ -387,8 +386,6 @@ function TradeTicket({ bond, activeConfig, onClose }) {
   const fmt = (n) => n?.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const today = new Date();
   const fecha = `${String(today.getDate()).padStart(2,"0")}/${String(today.getMonth()+1).padStart(2,"0")}/${today.getFullYear()}`;
-  const settle = new Date(today); settle.setDate(settle.getDate() + 2);
-  const fechaSettle = `${String(settle.getDate()).padStart(2,"0")}/${String(settle.getMonth()+1).padStart(2,"0")}/${settle.getFullYear()}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.75)" }} onClick={onClose}>
@@ -451,7 +448,6 @@ function TradeTicket({ bond, activeConfig, onClose }) {
             <div style={{ background: "#1A2535", borderRadius: 8, padding: "12px 14px" }}>
               <div style={{ color: "#94A3B8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Resumen de la operación</div>
               {[
-                ["Fecha Trade", fecha],
                 ["Principal", "USD " + fmt(r.principal)],
                 ["Cupón corrido", "USD " + fmt(r.accrued)],
                 ...(comisionOn ? [["Comisión", "USD " + fmt(r.comisionUSD)]] : []),
@@ -482,7 +478,7 @@ function TradeTicket({ bond, activeConfig, onClose }) {
 
           {/* Botón imprimir */}
           {r && (
-            <button onClick={() => printTicket({ bond, precio, nominal, trader, comision, comisionOn, r, fecha, fechaSettle })}
+            <button onClick={() => printTicket({ bond, precio, nominal, trader, comision, comisionOn, r, fecha })}
               style={{ background: "#1a1a2e", border: "1px solid #4A6FA5", borderRadius: 8, padding: "9px 0", color: "white", fontSize: 12, fontWeight: 700, cursor: "pointer", letterSpacing: 0.5 }}>
               Imprimir Ticket
             </button>
