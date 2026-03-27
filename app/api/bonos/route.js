@@ -76,14 +76,14 @@ function parseSheet(text) {
     const emisor = (cells[0] || "").replace(/"/g, "").trim();
     const cupon = parseNum(cells[1]);
     const vencimiento = (cells[2] || "").replace(/"/g, "").trim();
-    const precio = parseNum(cells[3]);
-    const bid = parseNum(cells[4]);
+    const bid = parseNum(cells[3]);
+    const ask = parseNum(cells[4]);
     const tir = parseNum(cells[5]);
     const year = extractYear(vencimiento);
 
     if (tir === null || !year) continue;
 
-    rows.push({ emisor: emisor || null, cupon, vencimiento, year, precio, bid, tir });
+    rows.push({ emisor: emisor || null, cupon, vencimiento, bid, ask, tir, precio: ask, year });
   }
 
   rows.sort((a, b) => a.year - b.year);

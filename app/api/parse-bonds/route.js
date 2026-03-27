@@ -18,9 +18,11 @@ const EXCEL_TO_SHEET = {
   "URUGUAY USD": "Uruguay USD",
   "URUGUAY PESOS": "Uruguay Pesos",
   "NOTAS UI": "Notas UI",
+  "NOTAS EN UI": "Notas UI",
   "NOTAS PESOS": "Notas Pesos",
   "US TREASURIES": "US Treasuries",
   "US TIPS": "US TIPS",
+  "US T-BILLS": "T-bills",
   "US T BILLS": "T-bills",
   "STRIPS": "Strips",
   "CURVA PEMEX": "PEMEX",
@@ -35,8 +37,8 @@ const HEADER_KEYWORDS = {
   EMISOR: ["EMISOR"],
   CUPON: ["CUPON", "CUPÓN", "COUPON"],
   VENCIMIENTO: ["VENCIMIENTO", "MATURITY", "VTO"],
-  BID: ["BID PRICE", "BID", "PRECIO BID"],
-  ASK: ["ASK PRICE", "ASK", "PRECIO ASK", "PRECIO", "PRICE", "PX"],
+  BID: ["BID", "BID PRICE", "PRECIO COMPRA", "PRECIO DE COMPRA"],
+  ASK: ["ASK", "ASK PRICE", "PRECIO VENTA", "PRECIO DE VENTA"],
   TIR: ["TIR", "TIR%", "TIR %", "YTM", "YIELD"],
 };
 
@@ -62,8 +64,8 @@ async function saveToGoogleSheet(parsedData) {
     if (!bonds || bonds.length === 0) continue;
 
     const rows = [
-      ["EMISOR", "CUPON", "VENCIMIENTO", "ASK", "BID", "TIR"],
-      ...bonds.map((b) => [b.emisor ?? "", b.cupon ?? "", b.vencimiento ?? "", b.ask ?? "", b.bid ?? "", b.tir ?? ""]),
+      ["EMISOR", "CUPON", "VENCIMIENTO", "BID", "ASK", "TIR"],
+      ...bonds.map((b) => [b.emisor ?? "", b.cupon ?? "", b.vencimiento ?? "", b.bid ?? "", b.ask ?? "", b.tir ?? ""]),
     ];
 
     try {
@@ -258,7 +260,7 @@ function parseBondBlock(rows) {
       const rawTir = getVal(row, colMap, "TIR");
       const tir = parseNum(rawTir);
 
-      bonds.push({ emisor, cupon, vencimiento, ask, bid, tir });
+      bonds.push({ emisor, cupon, vencimiento, bid, ask, tir });
     } catch (err) {
       console.error(`[parse-bonds] Error parsing row ${i}:`, err.message);
       continue;
