@@ -341,7 +341,8 @@ function printTicket({ bond, precio, nominal, trader, comision, comisionOn, r, f
     <div class="row"><span class="lbl">Principal</span><span class="val">USD ${fmt(r.principal)}</span></div>
     <div class="row"><span class="lbl">Cupón corrido</span><span class="val">USD ${fmt(r.accrued)}</span></div>
     ${comisionOn ? `<div class="row"><span class="lbl">Comisión</span><span class="val">USD ${fmt(r.comisionUSD)}</span></div>` : ""}
-    <div class="tir-row"><span class="lbl">TIR</span><span class="val">${r.tir}%</span></div>
+    <div class="tir-row"><span class="lbl">TIR (mercado)</span><span class="val">${r.tir}%</span></div>
+    ${comisionOn && r.tirNeta ? `<div class="tir-row"><span class="lbl">TIR neta (c/ comisión)</span><span class="val">${r.tirNeta}%</span></div>` : ""}
     <div class="total-row"><span class="lbl">TOTAL A PAGAR</span><span class="val">USD ${fmt(r.total)}</span></div>
   </div>
   <div class="footer">
@@ -372,7 +373,13 @@ function TradeTicket({ bond, activeConfig, onClose }) {
     const accrued = (n * parseFloat(tir.cuponCorrido)) / 100;
     const comisionUSD = comisionOn ? (n * c) / 100 : 0;
     const total = principal + accrued + comisionUSD;
-    return { principal, accrued, comisionUSD, total, tir: tir.tir, precioSucio: tir.precioSucio };
+    let tirNeta = null;
+    if (comisionOn && c > 0) {
+      const precioConComision = p + c;
+      const resultNeta = calcularTIR(precioConComision.toFixed(4), bond.cupon, bond.vencimiento);
+      tirNeta = resultNeta ? resultNeta.tir : null;
+    }
+    return { principal, accrued, comisionUSD, total, tir: tir.tir, tirNeta, precioSucio: tir.precioSucio };
   };
 
   const r = calc();
@@ -454,9 +461,15 @@ function TradeTicket({ bond, activeConfig, onClose }) {
                 </div>
               ))}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
-                <span style={{ color: "#94A3B8", fontSize: 11 }}>TIR</span>
+                <span style={{ color: "#94A3B8", fontSize: 11 }}>TIR (mercado)</span>
                 <span style={{ color: "white", fontSize: 15, fontWeight: 700, fontFamily: "monospace" }}>{r.tir}%</span>
               </div>
+              {comisionOn && r.tirNeta && (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+                  <span style={{ color: "#94A3B8", fontSize: 11 }}>TIR neta (c/ comisión)</span>
+                  <span style={{ color: "#93C5FD", fontSize: 15, fontWeight: 700, fontFamily: "monospace" }}>{r.tirNeta}%</span>
+                </div>
+              )}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, paddingTop: 10, borderTop: "2px solid #2A3A50" }}>
                 <span style={{ color: "white", fontSize: 12, fontWeight: 600 }}>TOTAL A PAGAR</span>
                 <span style={{ color: "white", fontSize: 18, fontWeight: 700, fontFamily: "monospace" }}>USD {fmt(r.total)}</span>
