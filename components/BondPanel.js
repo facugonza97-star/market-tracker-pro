@@ -338,8 +338,6 @@ function printTicket({ bond, precio, nominal, trader, comision, comisionOn, r, f
   <div class="section">
     <div class="section-title">Liquidación</div>
     <div class="row"><span class="lbl">Fecha Trade</span><span class="val">${fecha}</span></div>
-    <div class="row"><span class="lbl">Fecha Liquidación</span><span class="val">${fechaSettle} (T+2)</span></div>
-    <div class="row"><span class="lbl">Precio sucio</span><span class="val">${r.precioSucio}</span></div>
     <div class="row"><span class="lbl">Principal</span><span class="val">USD ${fmt(r.principal)}</span></div>
     <div class="row"><span class="lbl">Cupón corrido</span><span class="val">USD ${fmt(r.accrued)}</span></div>
     ${comisionOn ? `<div class="row"><span class="lbl">Comisión</span><span class="val">USD ${fmt(r.comisionUSD)}</span></div>` : ""}
@@ -446,8 +444,6 @@ function TradeTicket({ bond, activeConfig, onClose }) {
               <div style={{ color: "#94A3B8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Resumen de la operación</div>
               {[
                 ["Fecha Trade", fecha],
-                ["Fecha Liquidación", fechaSettle + " (T+2)"],
-                ["Precio sucio", r.precioSucio],
                 ["Principal", "USD " + fmt(r.principal)],
                 ["Cupón corrido", "USD " + fmt(r.accrued)],
                 ...(comisionOn ? [["Comisión", "USD " + fmt(r.comisionUSD)]] : []),
