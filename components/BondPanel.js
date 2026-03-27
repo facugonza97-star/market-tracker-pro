@@ -371,12 +371,13 @@ function TradeTicket({ bond, activeConfig, onClose }) {
     if (!tir) return null;
     const principal = (n * p) / 100;
     const accrued = (n * parseFloat(tir.cuponCorrido)) / 100;
-    const comisionUSD = comisionOn ? (n * c) / 100 : 0;
-    const total = principal + accrued + comisionUSD;
+    const efectivo = principal + accrued;
+    const comisionUSD = comisionOn ? efectivo * c / 100 : 0;
+    const total = efectivo + comisionUSD;
     let tirNeta = null;
     if (comisionOn && c > 0) {
-      const precioConComision = p + c;
-      const resultNeta = calcularTIR(precioConComision.toFixed(4), bond.cupon, bond.vencimiento);
+      const comisionEnPrecio = parseFloat(tir.precioSucio) * c / 100;
+      const resultNeta = calcularTIR((p + comisionEnPrecio).toFixed(4), bond.cupon, bond.vencimiento);
       tirNeta = resultNeta ? resultNeta.tir : null;
     }
     return { principal, accrued, comisionUSD, total, tir: tir.tir, tirNeta, precioSucio: tir.precioSucio };
