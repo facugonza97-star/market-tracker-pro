@@ -159,6 +159,21 @@ const SHARED_CSS = `
   @media print { body { padding: 8px 14px; } @page { margin: .5cm; size: A4; } }
 `;
 
+function formatEmisor(emisor) {
+  if (!emisor) return "—";
+  const map = {
+    "URUGUAY, ORIENTAL REPUBLIC OF (GOVERNMENT)": "Uruguay",
+    "URUGUAY NOTAS DEL TESO": "Uruguay — Notas del Tesoro",
+    "UNITED STATES TREASURY": "United States Treasury",
+    "PETROLEOS MEXICANOS": "Petróleos Mexicanos (PEMEX)",
+    "PETROBRAS GLOBAL FINANCE BV": "Petrobras Global Finance BV",
+    "BRAZIL, FEDERATIVE REPUBLIC OF (GOVERNMENT)": "Brazil",
+    "ECOPETROL SA": "Ecopetrol S.A.",
+    "PANAMA": "República de Panamá",
+  };
+  return map[emisor.trim()] || emisor;
+}
+
 function makeSectionHTML({ key, cfg, data, showChart }) {
   const names = SECTION_PRINT_NAMES[key] || { title: key, country: "" };
   const color = cfg.color;
@@ -166,7 +181,7 @@ function makeSectionHTML({ key, cfg, data, showChart }) {
   const rows = data.map((b, i) => {
     const alt = i % 2 === 1 ? ' class="alt"' : '';
     return `<tr${alt}>
-      <td style="padding:2.5px 6px;color:#1a1a2e">${b.emisor ?? "—"}</td>
+      <td style="padding:2.5px 6px;color:#1a1a2e">${formatEmisor(b.emisor)}</td>
       <td style="padding:2.5px 6px;text-align:right;font-family:monospace;color:#1a1a2e">${b.cupon !== null ? b.cupon.toFixed(3) + "%" : "—"}</td>
       <td style="padding:2.5px 6px;text-align:right;color:#1a1a2e">${b.vencimiento}</td>
       <td style="padding:2.5px 6px;text-align:right;font-family:monospace;color:#888">${b.bid?.toFixed(2) ?? "—"}</td>
