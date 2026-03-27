@@ -65,9 +65,9 @@ function calcularTIR(precioLimpio, cuponAnual, vencimientoStr) {
   const flujos = futureDates.map((_, i) => i === N - 1 ? couponSemestral + 100 : couponSemestral);
   const exponentes = futureDates.map((_, k) => (T - t) / T + k);
   function precioDado(r) { return flujos.reduce((s, f, i) => s + f / Math.pow(1 + r, exponentes[i]), 0); }
-  let lo = 0.00001, hi = 0.5;
+  let lo = -0.5, hi = 0.5;
   if (precioDado(hi) > precioSucio) hi = 2.0;
-  if (precioDado(lo) < precioSucio) return null;
+  if (precioDado(lo) < precioSucio) lo = -0.99;
   for (let i = 0; i < 200; i++) { const mid = (lo + hi) / 2; precioDado(mid) > precioSucio ? (lo = mid) : (hi = mid); }
   const rSemestral = (lo + hi) / 2;
   const tirAnual = (Math.pow(1 + rSemestral, 2) - 1) * 100;
