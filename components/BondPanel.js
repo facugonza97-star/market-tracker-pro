@@ -98,14 +98,14 @@ function buildCurveSVG(data1, color1, label1, data2, color2, label2, comparing) 
     svg += `<line x1="52" y1="${yPos.toFixed(1)}" x2="670" y2="${yPos.toFixed(1)}" stroke="#eee" stroke-width="0.5"/>`;
   }
   const pts1 = data1.filter(d => d.tir != null).map(d => `${px(d.year).toFixed(1)},${py(d.tir).toFixed(1)}`).join(" ");
-  svg += `<polyline points="${pts1}" fill="none" stroke="${color1}" stroke-width="2.5"/>`;
-  data1.filter(d => d.tir != null).forEach(d => { svg += `<circle cx="${px(d.year).toFixed(1)}" cy="${py(d.tir).toFixed(1)}" r="3" fill="${color1}"/>`; });
+  svg += `<polyline points="${pts1}" fill="none" stroke="#1a1a2e" stroke-width="2.5"/>`;
+  data1.filter(d => d.tir != null).forEach(d => { svg += `<circle cx="${px(d.year).toFixed(1)}" cy="${py(d.tir).toFixed(1)}" r="3" fill="#1a1a2e"/>`; });
   if (comparing && data2) {
     const pts2 = data2.filter(d => d.tir != null).map(d => `${px(d.year).toFixed(1)},${py(d.tir).toFixed(1)}`).join(" ");
-    svg += `<polyline points="${pts2}" fill="none" stroke="${color2}" stroke-width="2.5" stroke-dasharray="6,3"/>`;
-    data2.filter(d => d.tir != null).forEach(d => { svg += `<circle cx="${px(d.year).toFixed(1)}" cy="${py(d.tir).toFixed(1)}" r="3" fill="${color2}"/>`; });
-    svg += `<rect x="10" y="8" width="16" height="3" fill="${color1}"/><text x="30" y="13" font-size="10" fill="#444" font-family="Arial">${label1}</text>`;
-    svg += `<rect x="10" y="20" width="16" height="3" fill="${color2}"/><text x="30" y="25" font-size="10" fill="#444" font-family="Arial">${label2}</text>`;
+    svg += `<polyline points="${pts2}" fill="none" stroke="#1a1a2e" stroke-width="2.5" stroke-dasharray="6,3"/>`;
+    data2.filter(d => d.tir != null).forEach(d => { svg += `<circle cx="${px(d.year).toFixed(1)}" cy="${py(d.tir).toFixed(1)}" r="3" fill="#1a1a2e"/>`; });
+    svg += `<rect x="10" y="8" width="16" height="3" fill="#1a1a2e"/><text x="30" y="13" font-size="10" fill="#444" font-family="Arial">${label1}</text>`;
+    svg += `<rect x="10" y="20" width="16" height="3" fill="#1a1a2e"/><text x="30" y="25" font-size="10" fill="#444" font-family="Arial">${label2}</text>`;
   }
   const uniqYears = [...new Set(data1.map(d => d.year))];
   const step = Math.ceil(uniqYears.length / 6);
@@ -166,17 +166,17 @@ function makeSectionHTML({ key, cfg, data, showChart }) {
   const rows = data.map((b, i) => {
     const alt = i % 2 === 1 ? ' class="alt"' : '';
     return `<tr${alt}>
-      <td>${b.emisor ?? "—"}</td>
-      <td class="mono">${b.cupon !== null ? b.cupon.toFixed(3) + "%" : "—"}</td>
-      <td>${b.vencimiento}</td>
-      <td class="r bid">${b.bid?.toFixed(2) ?? "—"}</td>
-      <td class="r mono">${b.ask?.toFixed(2) ?? "—"}</td>
-      <td class="r tir" style="color:#1a1a2e">${b.tir != null ? b.tir.toFixed(2) + "%" : "—"}</td>
+      <td style="padding:2.5px 5px">${b.emisor ?? "—"}</td>
+      <td class="mono" style="padding:2.5px 5px">${b.cupon !== null ? b.cupon.toFixed(3) + "%" : "—"}</td>
+      <td style="padding:2.5px 5px">${b.vencimiento}</td>
+      <td class="r bid" style="padding:2.5px 5px">${b.bid?.toFixed(2) ?? "—"}</td>
+      <td class="r mono" style="padding:2.5px 5px">${b.ask?.toFixed(2) ?? "—"}</td>
+      <td class="r tir" style="padding:2.5px 5px;color:#1a1a2e">${b.tir != null ? b.tir.toFixed(2) + "%" : "—"}</td>
     </tr>`;
   }).join("");
   const thead = `<thead><tr>
-    <th>Emisor</th><th>Cupón</th><th>Vencimiento</th>
-    <th class="r">Precio Compra</th><th class="r">Precio Venta</th><th class="r">TIR</th>
+    <th style="width:38%;padding:3px 5px">Emisor</th><th style="width:8%;padding:3px 5px">Cupón</th><th style="width:12%;padding:3px 5px">Vencimiento</th>
+    <th class="r" style="width:12%;padding:3px 5px">Precio Compra</th><th class="r" style="width:12%;padding:3px 5px">Precio Venta</th><th class="r" style="width:8%;padding:3px 5px">TIR</th>
   </tr></thead>`;
   const chartHTML = hasCurve
     ? `<div class="chart-box"><svg viewBox="0 0 700 160" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">${buildCurveSVG(data, color, names.title, null, null, "", false)}</svg></div>`
@@ -186,7 +186,7 @@ function makeSectionHTML({ key, cfg, data, showChart }) {
       Curva de Rendimiento — ${names.title}
     </div>
     ${chartHTML}
-    <table>${thead}<tbody>${rows}</tbody></table>
+    <table style="width:100%;border-collapse:collapse;font-size:8.5px;table-layout:fixed">${thead}<tbody>${rows}</tbody></table>
   </div>`;
 }
 
