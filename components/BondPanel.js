@@ -113,16 +113,129 @@ function buildCurveSVG(data1, color1, label1, data2, color2, label2, comparing) 
   return svg;
 }
 
-const PRINT_CSS = `*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:9px;color:#1a1a2e;padding:16px 24px}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #1a1a2e}.header h1{font-size:16px;font-weight:700;margin-bottom:2px;color:#1a1a2e}.header p{font-size:8px;color:#666;margin:0}.logo{font-size:11px;font-weight:700;text-align:right;color:#1a1a2e}.logo span{display:block;font-size:8px;font-weight:400;color:#888;letter-spacing:.5px}.section-block{margin-bottom:14px}.section-header{background-color:#1a1a2e;color:white;padding:4px 8px;font-size:10px;font-weight:700;margin-bottom:0}.chart-area{background:#f8f9fb;border:.5px solid #ddd;height:120px;margin-bottom:0}table{width:100%;border-collapse:collapse;font-size:8.5px}thead tr{background-color:#e8ecf0;border-bottom:1px solid #1a1a2e}thead th{padding:3px 6px;text-align:left;font-size:8px;font-weight:700;color:#333;text-transform:uppercase;letter-spacing:.3px}tbody tr{border-bottom:.5px solid #e8e8e8}tbody tr:nth-child(even){background-color:#f5f7fa}tbody td{padding:2.5px 6px;color:#1a1a2e}.footer{margin-top:10px;padding-top:6px;border-top:.5px solid #ccc;display:flex;justify-content:space-between}.footer p{font-size:7.5px;color:#999;margin:0}@media print{body{padding:10px 16px}@page{margin:.5cm;size:A4}}`;
+const SECTION_PRINT_NAMES = {
+  "Uruguay USD":   { title: "Uruguay USD",   country: "Uruguay" },
+  "Uruguay Pesos": { title: "Uruguay Pesos", country: "Uruguay" },
+  "Notas UI":      { title: "Notas UI",      country: "Uruguay" },
+  "Notas Pesos":   { title: "Notas Pesos",   country: "Uruguay" },
+  "US Treasuries": { title: "US Treasuries", country: "Estados Unidos" },
+  "US TIPS":       { title: "US TIPS",       country: "Estados Unidos" },
+  "T-bills":       { title: "T-bills",       country: "Estados Unidos" },
+  "Strips":        { title: "Strips",        country: "Estados Unidos" },
+  "PEMEX":         { title: "PEMEX",         country: "México" },
+  "Petrobras":     { title: "Petrobras",     country: "Brasil" },
+  "Brasil":        { title: "Brasil",        country: "Brasil" },
+  "Ecopetrol":     { title: "Ecopetrol",     country: "Colombia" },
+  "Panama":        { title: "Panamá",        country: "Panamá" },
+};
+
+const SHARED_CSS = `
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 9px; color: #1a1a2e; padding: 14px 22px; }
+  .doc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; padding-bottom: 9px; border-bottom: 2px solid #1a1a2e; }
+  .doc-header h1 { font-size: 17px; font-weight: 700; color: #1a1a2e; margin-bottom: 2px; }
+  .doc-header .meta { font-size: 8px; color: #777; }
+  .logo-block { text-align: right; }
+  .logo-block .logo-name { font-size: 12px; font-weight: 700; color: #1a1a2e; }
+  .logo-block .logo-sub { font-size: 8px; color: #999; letter-spacing: .4px; display: block; margin-top: 1px; }
+  .section-wrap { margin-bottom: 14px; }
+  .section-title-bar { display: flex; align-items: stretch; }
+  .section-color-bar { width: 4px; flex-shrink: 0; }
+  .section-title-inner { flex: 1; padding: 4px 8px; background: #f0f2f6; border-bottom: 1px solid #d8dce6; }
+  .section-title-inner .s-title { font-size: 11px; font-weight: 700; color: #1a1a2e; }
+  .section-title-inner .s-sub { font-size: 7.5px; color: #888; margin-top: 1px; }
+  .chart-box { background: #f8f9fb; border: .5px solid #d8dce6; border-top: none; height: 112px; }
+  table { width: 100%; border-collapse: collapse; font-size: 8.5px; }
+  thead tr { background: #eaecf2; }
+  thead th { padding: 3px 6px; text-align: left; font-size: 7.5px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: .3px; border-bottom: 1px solid #c8ccd8; }
+  thead th.r { text-align: right; }
+  tbody tr { border-bottom: .5px solid #e8e8e8; }
+  tbody tr.alt { background: #f4f6fa; }
+  tbody td { padding: 2.5px 6px; color: #1a1a2e; }
+  tbody td.r { text-align: right; }
+  tbody td.mono { font-family: monospace; }
+  tbody td.bid { color: #888; font-family: monospace; }
+  tbody td.tir { font-weight: 700; font-family: monospace; }
+  .doc-footer { margin-top: 10px; padding-top: 6px; border-top: .5px solid #ccc; display: flex; justify-content: space-between; }
+  .doc-footer p { font-size: 7px; color: #aaa; }
+  @media print { body { padding: 8px 14px; } @page { margin: .5cm; size: A4; } }
+`;
+
+function makeSectionHTML({ key, cfg, data, showChart }) {
+  const names = SECTION_PRINT_NAMES[key] || { title: key, country: "" };
+  const color = cfg.color;
+  const hasCurve = showChart && data.length > 1;
+  const rows = data.map((b, i) => {
+    const alt = i % 2 === 1 ? ' class="alt"' : '';
+    return `<tr${alt}>
+      <td>${b.emisor ?? "—"}</td>
+      <td class="mono">${b.cupon !== null ? b.cupon.toFixed(3) + "%" : "—"}</td>
+      <td>${b.vencimiento}</td>
+      <td class="r bid">${b.bid?.toFixed(2) ?? "—"}</td>
+      <td class="r mono">${b.ask?.toFixed(2) ?? "—"}</td>
+      <td class="r tir" style="color:${color}">${b.tir != null ? b.tir.toFixed(2) + "%" : "—"}</td>
+    </tr>`;
+  }).join("");
+  const thead = `<thead><tr>
+    <th>Emisor</th><th>Cupón</th><th>Vencimiento</th>
+    <th class="r">Precio Compra</th><th class="r">Precio Venta</th><th class="r">TIR</th>
+  </tr></thead>`;
+  const chartHTML = hasCurve
+    ? `<div class="chart-box"><svg viewBox="0 0 700 160" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">${buildCurveSVG(data, color, names.title, null, null, "", false)}</svg></div>`
+    : "";
+  return `<div class="section-wrap">
+    <div class="section-title-bar">
+      <div class="section-color-bar" style="background:${color};"></div>
+      <div class="section-title-inner">
+        <div class="s-title">Curva de Rendimiento — ${names.title}</div>
+        ${names.country ? `<div class="s-sub">${names.country}</div>` : ""}
+      </div>
+    </div>
+    ${chartHTML}
+    <table>${thead}<tbody>${rows}</tbody></table>
+  </div>`;
+}
 
 function handlePrint({ activeData, activeConfig, compareData, compareConfig, isComparing, lastUpdate }) {
   const today = new Date();
   const fecha = `${String(today.getDate()).padStart(2,"0")}/${String(today.getMonth()+1).padStart(2,"0")}/${today.getFullYear()}`;
-  const activeLabel = stripEmoji(activeConfig.label);
-  const compareLabel = isComparing ? stripEmoji(compareConfig.label) : "";
-  const tableRows = (data, color) => data.map(b => `<tr><td>${b.emisor ?? "—"}</td><td>${b.cupon !== null ? b.cupon.toFixed(3)+"%" : "—"}</td><td>${b.vencimiento}</td><td style="text-align:right;color:#888">${b.bid?.toFixed(2) ?? "—"}</td><td style="text-align:right">${b.ask?.toFixed(2) ?? "—"}</td><td style="text-align:right;color:${color};font-weight:600">${b.tir != null ? b.tir.toFixed(2)+"%" : "—"}</td></tr>`).join("");
-  const tableHead = `<thead><tr><th>Emisor</th><th>Cupón</th><th>Vencimiento</th><th style="text-align:right">Precio Compra</th><th style="text-align:right">Precio Venta</th><th style="text-align:right">TIR</th></tr></thead>`;
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${activeLabel} — Curva de Rendimiento</title><style>${PRINT_CSS}</style></head><body><div class="header"><div><h1>${activeLabel}${isComparing ? " — comparado con "+compareLabel : ""}</h1><p>Curva de Rendimiento · Fecha: ${fecha}${lastUpdate ? " · Actualización: "+lastUpdate : ""} · Precios indicativos</p></div><div class="logo">Gastón Bengochea<span>Corredor de Bolsa</span></div></div><div class="section-block"><div class="section-header">Curva de rendimiento</div><div class="chart-area"><svg viewBox="0 0 700 160" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">${buildCurveSVG(activeData, activeConfig.color, activeLabel, compareData, compareConfig?.color, compareLabel, isComparing)}</svg></div></div><div class="section-block"><div class="section-header">${activeLabel} — Listado de bonos</div><table>${tableHead}<tbody>${tableRows(activeData, activeConfig.color)}</tbody></table></div>${isComparing && compareData ? `<div class="section-block"><div class="section-header">${compareLabel} — Listado de bonos</div><table>${tableHead}<tbody>${tableRows(compareData, compareConfig.color)}</tbody></table></div>` : ""}<div class="footer"><p>Gastón Bengochea Corredor de Bolsa · Precios indicativos, no constituyen oferta de compraventa</p><p>${fecha}</p></div><script>window.onload=()=>window.print();<\/script></body></html>`;
+  const key = Object.keys(SECTION_CONFIG).find(k => SECTION_CONFIG[k] === activeConfig) || "";
+  const names = SECTION_PRINT_NAMES[key] || { title: stripEmoji(activeConfig.label), country: "" };
+  const compareKey = isComparing ? Object.keys(SECTION_CONFIG).find(k => SECTION_CONFIG[k] === compareConfig) || "" : "";
+  const compareNames = compareKey ? (SECTION_PRINT_NAMES[compareKey] || { title: stripEmoji(compareConfig.label), country: "" }) : null;
+  const mainTitle = isComparing ? `${names.title} — comparado con ${compareNames.title}` : names.title;
+
+  let bodySections = makeSectionHTML({ key, cfg: activeConfig, data: activeData, showChart: true });
+  if (isComparing && compareData && compareKey) {
+    bodySections += makeSectionHTML({ key: compareKey, cfg: compareConfig, data: compareData, showChart: false });
+    const combinedSVG = buildCurveSVG(activeData, activeConfig.color, names.title, compareData, compareConfig.color, compareNames.title, true);
+    bodySections = bodySections.replace(
+      /<svg[^>]*>[\s\S]*?<\/svg>/,
+      `<svg viewBox="0 0 700 160" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">${combinedSVG}</svg>`
+    );
+  }
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+    <title>${names.title} — Curva de Rendimiento</title>
+    <style>${SHARED_CSS}</style>
+  </head><body>
+    <div class="doc-header">
+      <div><h1>${mainTitle}</h1>
+        <div class="meta">Curva de Rendimiento · Fecha: ${fecha}${lastUpdate ? " · Actualización: " + lastUpdate : ""} · Precios indicativos</div>
+      </div>
+      <div class="logo-block">
+        <div class="logo-name">Gastón Bengochea</div>
+        <span class="logo-sub">Corredor de Bolsa</span>
+      </div>
+    </div>
+    ${bodySections}
+    <div class="doc-footer">
+      <p>Gastón Bengochea Corredor de Bolsa · Precios indicativos, no constituyen oferta de compraventa</p>
+      <p>${fecha}</p>
+    </div>
+    <script>window.onload = () => window.print();<\/script>
+  </body></html>`;
+
   const win = window.open("", "_blank");
   if (win) { win.document.write(html); win.document.close(); }
 }
@@ -131,18 +244,33 @@ function handlePrintAll({ sections, lastUpdate }) {
   const today = new Date();
   const fecha = `${String(today.getDate()).padStart(2,"0")}/${String(today.getMonth()+1).padStart(2,"0")}/${today.getFullYear()}`;
   const sectionKeys = Object.keys(sections).filter(k => sections[k].length > 0);
-  const tableRows = (data, color) => data.map((b, i) => `<tr style="${i % 2 === 1 ? "background:#f5f7fa;" : ""}border-bottom:.5px solid #e8e8e8"><td style="padding:2.5px 6px;color:#1a1a2e">${b.emisor ?? "—"}</td><td style="padding:2.5px 6px;color:#1a1a2e">${b.cupon !== null ? b.cupon.toFixed(3)+"%" : "—"}</td><td style="padding:2.5px 6px;color:#1a1a2e">${b.vencimiento}</td><td style="padding:2.5px 6px;text-align:right;font-family:monospace;color:#1a1a2e">${b.bid?.toFixed(2) ?? "—"}</td><td style="padding:2.5px 6px;text-align:right;font-family:monospace;color:#1a1a2e">${b.ask?.toFixed(2) ?? "—"}</td><td style="padding:2.5px 6px;text-align:right;font-weight:700;color:${color}">${b.tir != null ? b.tir.toFixed(2)+"%" : "—"}</td></tr>`).join("");
-  const tableHead = `<thead><tr style="background-color:#e8ecf0"><th style="padding:4px 6px;text-align:left;font-size:8px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #1a1a2e">Emisor</th><th style="padding:4px 6px;text-align:left;font-size:8px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #1a1a2e">Cupón</th><th style="padding:4px 6px;text-align:left;font-size:8px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #1a1a2e">Vencimiento</th><th style="padding:4px 6px;text-align:right;font-size:8px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #1a1a2e">Precio Compra</th><th style="padding:4px 6px;text-align:right;font-size:8px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #1a1a2e">Precio Venta</th><th style="padding:4px 6px;text-align:right;font-size:8px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #1a1a2e">TIR</th></tr></thead>`;
-  let body = "";
-  sectionKeys.forEach((key) => {
+
+  const body = sectionKeys.map(key => {
     const cfg = SECTION_CONFIG[key] || { label: key, color: "#5B8DEF" };
-    const label = stripEmoji(cfg.label);
-    const data = sections[key];
-    body += `<div style="margin-bottom:16px"><div style="background:#1a1a2e;color:white;padding:5px 10px;font-size:10px;font-weight:700;margin-bottom:0">${label}</div>`;
-    if (key !== "T-bills") body += `<div style="background:#f5f7fa;border-left:.5px solid #ddd;border-right:.5px solid #ddd;border-bottom:.5px solid #ddd;height:110px;margin-bottom:0"><svg viewBox="0 0 700 160" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">${buildCurveSVG(data, cfg.color, label, null, null, "", false)}</svg></div>`;
-    body += `<table style="width:100%;border-collapse:collapse;font-size:8.5px">${tableHead}<tbody>${tableRows(data, cfg.color)}</tbody></table></div>`;
-  });
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Reporte Completo de Bonos</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:9px;color:#1a1a2e;padding:16px 24px}@media print{body{padding:10px 16px}@page{margin:.5cm;size:A4}}</style></head><body><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #1a1a2e"><div><h1 style="font-size:18px;font-weight:700;margin:0 0 2px;color:#1a1a2e">Reporte Completo de Bonos</h1><p style="font-size:8px;color:#666;margin:0">Gastón Bengochea Corredor de Bolsa · Fecha: ${fecha}${lastUpdate ? " · Actualización: "+lastUpdate : ""} · Precios indicativos</p></div><div style="text-align:right"><div style="font-size:13px;font-weight:700;color:#1a1a2e">Gastón Bengochea</div><span style="font-size:8px;color:#888;letter-spacing:.5px;display:block">Corredor de Bolsa</span></div></div>${body}<div style="margin-top:12px;padding-top:6px;border-top:1px solid #ccc;display:flex;justify-content:space-between"><p style="font-size:7.5px;color:#999;margin:0">Gastón Bengochea Corredor de Bolsa · Precios indicativos, no constituyen oferta de compraventa</p><p style="font-size:7.5px;color:#999;margin:0">${fecha}</p></div><script>window.onload=()=>window.print();<\/script></body></html>`;
+    return makeSectionHTML({ key, cfg, data: sections[key], showChart: key !== "T-bills" });
+  }).join("");
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+    <title>Reporte Completo de Bonos</title>
+    <style>${SHARED_CSS}</style>
+  </head><body>
+    <div class="doc-header">
+      <div><h1>Reporte Completo de Bonos</h1>
+        <div class="meta">Gastón Bengochea Corredor de Bolsa · Fecha: ${fecha}${lastUpdate ? " · Actualización: " + lastUpdate : ""} · Precios indicativos</div>
+      </div>
+      <div class="logo-block">
+        <div class="logo-name">Gastón Bengochea</div>
+        <span class="logo-sub">Corredor de Bolsa</span>
+      </div>
+    </div>
+    ${body}
+    <div class="doc-footer">
+      <p>Gastón Bengochea Corredor de Bolsa · Precios indicativos, no constituyen oferta de compraventa</p>
+      <p>${fecha}</p>
+    </div>
+    <script>window.onload = () => window.print();<\/script>
+  </body></html>`;
+
   const win = window.open("", "_blank");
   if (win) { win.document.write(html); win.document.close(); }
 }
