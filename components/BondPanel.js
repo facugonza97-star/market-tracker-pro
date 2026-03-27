@@ -71,7 +71,6 @@ function calcularTIR(precioLimpio, cuponAnual, vencimientoStr) {
   for (let i = 0; i < 200; i++) { const mid = (lo + hi) / 2; precioDado(mid) > precioSucio ? (lo = mid) : (hi = mid); }
   const rSemestral = (lo + hi) / 2;
   const tirAnual = (Math.pow(1 + rSemestral, 2) - 1) * 100;
-  console.log("DEBUG TIR | prevCoupon:", prevCoupon.toISOString().slice(0,10), "| nextCoupon:", nextCoupon.toISOString().slice(0,10), "| T:", T, "| t:", t, "| cuponCorrido:", cuponCorrido.toFixed(4), "| precioSucio:", precioSucio.toFixed(4), "| N:", N, "| rSemestral:", rSemestral.toFixed(6));
   return { tir: tirAnual.toFixed(2), cuponCorrido: cuponCorrido.toFixed(4), precioSucio: precioSucio.toFixed(4) };
 }
 
