@@ -131,7 +131,7 @@ const SECTION_PRINT_NAMES = {
 
 const SHARED_CSS = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: Arial, sans-serif; font-size: 9px; color: #1a1a2e; padding: 14px 22px; }
+  body { font-family: Arial, sans-serif; font-size: 10px; color: #1a1a2e; padding: 14px 22px; }
   .doc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; padding-bottom: 9px; border-bottom: 2px solid #1a1a2e; }
   .doc-header h1 { font-size: 17px; font-weight: 700; color: #1a1a2e; margin-bottom: 2px; }
   .doc-header .meta { font-size: 8px; color: #777; }
@@ -139,19 +139,17 @@ const SHARED_CSS = `
   .logo-block .logo-name { font-size: 12px; font-weight: 700; color: #1a1a2e; }
   .logo-block .logo-sub { font-size: 8px; color: #999; letter-spacing: .4px; display: block; margin-top: 1px; }
   .section-wrap { margin-bottom: 14px; }
-  .section-title-bar { display: flex; align-items: stretch; }
-  .section-color-bar { width: 4px; flex-shrink: 0; }
-  .section-title-inner { flex: 1; padding: 4px 8px; background: #f0f2f6; border-bottom: 1px solid #d8dce6; }
-  .section-title-inner .s-title { font-size: 11px; font-weight: 700; color: #1a1a2e; }
+  .section-title-inner { padding: 4px 8px; background: #f0f2f6; border-bottom: 1px solid #d8dce6; }
+  .section-title-inner .s-title { font-size: 12px; font-weight: 700; color: #1a1a2e; }
   .section-title-inner .s-sub { font-size: 7.5px; color: #888; margin-top: 1px; }
   .chart-box { background: #f8f9fb; border: .5px solid #d8dce6; border-top: none; height: 112px; }
   table { width: 100%; border-collapse: collapse; font-size: 8.5px; }
   thead tr { background: #eaecf2; }
-  thead th { padding: 3px 6px; text-align: left; font-size: 7.5px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: .3px; border-bottom: 1px solid #c8ccd8; }
+  thead th { padding: 3px 6px; text-align: left; font-size: 8.5px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: .3px; border-bottom: 1px solid #c8ccd8; }
   thead th.r { text-align: right; }
   tbody tr { border-bottom: .5px solid #e8e8e8; }
   tbody tr.alt { background: #f4f6fa; }
-  tbody td { padding: 2.5px 6px; color: #1a1a2e; }
+  tbody td { padding: 3.5px 6px; color: #1a1a2e; }
   tbody td.r { text-align: right; }
   tbody td.mono { font-family: monospace; }
   tbody td.bid { color: #888; font-family: monospace; }
@@ -173,7 +171,7 @@ function makeSectionHTML({ key, cfg, data, showChart }) {
       <td>${b.vencimiento}</td>
       <td class="r bid">${b.bid?.toFixed(2) ?? "—"}</td>
       <td class="r mono">${b.ask?.toFixed(2) ?? "—"}</td>
-      <td class="r tir" style="color:${color}">${b.tir != null ? b.tir.toFixed(2) + "%" : "—"}</td>
+      <td class="r tir" style="color:#1a1a2e">${b.tir != null ? b.tir.toFixed(2) + "%" : "—"}</td>
     </tr>`;
   }).join("");
   const thead = `<thead><tr>
@@ -184,12 +182,8 @@ function makeSectionHTML({ key, cfg, data, showChart }) {
     ? `<div class="chart-box"><svg viewBox="0 0 700 160" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">${buildCurveSVG(data, color, names.title, null, null, "", false)}</svg></div>`
     : "";
   return `<div class="section-wrap">
-    <div class="section-title-bar">
-      <div class="section-color-bar" style="background:${color};"></div>
-      <div class="section-title-inner">
-        <div class="s-title">Curva de Rendimiento — ${names.title}</div>
-        ${names.country ? `<div class="s-sub">${names.country}</div>` : ""}
-      </div>
+    <div style="background:#1a1a2e;color:white;padding:5px 10px;font-size:10px;font-weight:700;">
+      Curva de Rendimiento — ${names.title}
     </div>
     ${chartHTML}
     <table>${thead}<tbody>${rows}</tbody></table>
