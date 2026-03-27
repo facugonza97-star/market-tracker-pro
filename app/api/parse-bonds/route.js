@@ -37,8 +37,8 @@ const HEADER_KEYWORDS = {
   EMISOR: ["EMISOR"],
   CUPON: ["CUPON", "CUPÓN", "COUPON"],
   VENCIMIENTO: ["VENCIMIENTO", "MATURITY", "VTO"],
-  BID: ["BID", "BID PRICE", "PRECIO DE COMPRA", "PRECIO COMPRA"],
-  ASK: ["ASK", "ASK PRICE", "PRECIO DE VENTA", "PRECIO VENTA", "PRECIO", "PRICE", "PX"],
+  BID: ["PRECIO DE COMPRA", "PRECIO COMPRA", "BID PRICE", "BID"],
+  ASK: ["PRECIO DE VENTA", "PRECIO VENTA", "ASK PRICE", "ASK", "PRECIO", "PRICE", "PX"],
   TIR: ["TIR", "TIR%", "TIR %", "YTM", "YIELD"],
 };
 
@@ -200,9 +200,9 @@ function detectHeaderRow(rows) {
 function buildColumnMap(headerCells) {
   const map = {};
   for (const [field, aliases] of Object.entries(HEADER_KEYWORDS)) {
-    for (let col = 0; col < headerCells.length; col++) {
-      const cell = headerCells[col];
-      if (aliases.some((a) => cell === a || cell.includes(a))) {
+    for (const alias of aliases) {
+      const col = headerCells.findIndex((cell) => cell === alias || cell.includes(alias));
+      if (col !== -1) {
         map[field] = col;
         break;
       }
