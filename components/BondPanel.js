@@ -280,45 +280,204 @@ function SingleTooltip({ active, payload }) {
   return (<div style={{ background: "#0F1520", border: "1px solid #2A3A50", borderRadius: 8, padding: "8px 12px" }}><div style={{ color: "#94A3B8", fontSize: 11, marginBottom: 4 }}>Vencimiento: {d.vencimiento}</div>{d.cupon !== null && <div style={{ color: "#CBD5E0", fontSize: 12 }}>Cupon: {d.cupon.toFixed(3)}%</div>}<div style={{ color: "#CBD5E0", fontSize: 12 }}>Bid: {d.bid?.toFixed(2) ?? "—"} · Ask: {d.ask?.toFixed(2) ?? "—"}</div><div style={{ color: "#fff", fontSize: 14, fontWeight: 600, fontFamily: "monospace" }}>TIR: {d.tir?.toFixed(2)}%</div></div>);
 }
 
-function TIRModal({ bond, activeConfig, onClose }) {
-  const [precioInput, setPrecioInput] = useState(bond.ask?.toFixed(2) ?? "");
-  const resultado = precioInput !== "" ? calcularTIR(precioInput, bond.cupon, bond.vencimiento) : null;
+function printTicket({ bond, precio, nominal, trader, comision, comisionOn, r, fecha, fechaSettle }) {
+  const fmt = (n) => n?.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Ticket de Operación</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:Arial,sans-serif;font-size:10px;color:#1a1a2e;padding:30px 36px;max-width:520px;margin:0 auto}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #1a1a2e}
+    .header h1{font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:2px}
+    .header .sub{font-size:8px;color:#888}
+    .logo-name{font-size:12px;font-weight:700;text-align:right}
+    .logo-sub{font-size:8px;color:#999;display:block;text-align:right;margin-top:1px}
+    .section{margin-bottom:16px}
+    .section-title{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #e8e8e8}
+    .bond-name{font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:6px}
+    .bond-meta{display:flex;gap:24px}
+    .bond-meta-item .lbl{font-size:8px;color:#999}
+    .bond-meta-item .val{font-size:11px;font-family:monospace;font-weight:600;color:#1a1a2e}
+    .row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f0f0}
+    .row .lbl{color:#666;font-size:10px}
+    .row .val{font-family:monospace;font-size:10px;color:#1a1a2e}
+    .total-row{display:flex;justify-content:space-between;align-items:center;padding-top:10px;margin-top:4px;border-top:2px solid #1a1a2e}
+    .total-row .lbl{font-size:12px;font-weight:700;color:#1a1a2e}
+    .total-row .val{font-size:16px;font-weight:700;font-family:monospace;color:#1a1a2e}
+    .tir-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0}
+    .tir-row .val{font-size:13px;font-weight:700;font-family:monospace;color:#1a1a2e}
+    .footer{margin-top:20px;padding-top:8px;border-top:1px solid #ccc;display:flex;justify-content:space-between}
+    .footer p{font-size:7px;color:#aaa}
+    @media print{body{padding:20px 24px}@page{margin:.5cm;size:A4}}
+  </style></head><body>
+  <div class="header">
+    <div>
+      <h1>Ticket de Operación</h1>
+      <div class="sub">Gastón Bengochea Corredor de Bolsa · Precios indicativos</div>
+    </div>
+    <div>
+      <div class="logo-name">Gastón Bengochea</div>
+      <span class="logo-sub">Corredor de Bolsa</span>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Bono</div>
+    <div class="bond-name">${bond.emisor}</div>
+    <div class="bond-meta">
+      <div class="bond-meta-item"><div class="lbl">Cupón</div><div class="val">${bond.cupon?.toFixed(3)}%</div></div>
+      <div class="bond-meta-item"><div class="lbl">Vencimiento</div><div class="val">${bond.vencimiento}</div></div>
+      <div class="bond-meta-item"><div class="lbl">Precio Ask</div><div class="val">${bond.ask?.toFixed(2) ?? "—"}</div></div>
+    </div>
+  </div>
+  ${trader ? `<div class="section"><div class="section-title">Asesor</div><div style="font-size:11px;font-weight:600;color:#1a1a2e">${trader}</div></div>` : ""}
+  <div class="section">
+    <div class="section-title">Parámetros</div>
+    <div class="row"><span class="lbl">Precio limpio</span><span class="val">${precio}</span></div>
+    <div class="row"><span class="lbl">Nominal</span><span class="val">USD ${fmt(parseFloat(nominal))}</span></div>
+    ${comisionOn ? `<div class="row"><span class="lbl">Comisión</span><span class="val">${comision}%</span></div>` : ""}
+  </div>
+  <div class="section">
+    <div class="section-title">Liquidación</div>
+    <div class="row"><span class="lbl">Fecha Trade</span><span class="val">${fecha}</span></div>
+    <div class="row"><span class="lbl">Fecha Liquidación</span><span class="val">${fechaSettle} (T+2)</span></div>
+    <div class="row"><span class="lbl">Precio sucio</span><span class="val">${r.precioSucio}</span></div>
+    <div class="row"><span class="lbl">Principal</span><span class="val">USD ${fmt(r.principal)}</span></div>
+    <div class="row"><span class="lbl">Cupón corrido</span><span class="val">USD ${fmt(r.accrued)}</span></div>
+    ${comisionOn ? `<div class="row"><span class="lbl">Comisión</span><span class="val">USD ${fmt(r.comisionUSD)}</span></div>` : ""}
+    <div class="tir-row"><span class="lbl">TIR</span><span class="val">${r.tir}%</span></div>
+    <div class="total-row"><span class="lbl">TOTAL A PAGAR</span><span class="val">USD ${fmt(r.total)}</span></div>
+  </div>
+  <div class="footer">
+    <p>Precios indicativos, no constituyen oferta de compraventa</p>
+    <p>${fecha}</p>
+  </div>
+  <script>window.onload=()=>window.print();<\/script>
+  </body></html>`;
+  const win = window.open("", "_blank");
+  if (win) { win.document.write(html); win.document.close(); }
+}
+
+function TradeTicket({ bond, activeConfig, onClose }) {
+  const [precio, setPrecio] = useState(bond.ask?.toFixed(2) ?? "");
+  const [nominal, setNominal] = useState("100000");
+  const [trader, setTrader] = useState("");
+  const [comision, setComision] = useState("0.50");
+  const [comisionOn, setComisionOn] = useState(true);
+
+  const calc = () => {
+    const p = parseFloat(precio);
+    const n = parseFloat(nominal);
+    const c = parseFloat(comision) || 0;
+    if (isNaN(p) || isNaN(n) || p <= 0 || n <= 0) return null;
+    const tir = calcularTIR(precio, bond.cupon, bond.vencimiento);
+    if (!tir) return null;
+    const principal = (n * p) / 100;
+    const accrued = (n * parseFloat(tir.cuponCorrido)) / 100;
+    const comisionUSD = comisionOn ? (n * c) / 100 : 0;
+    const total = principal + accrued + comisionUSD;
+    return { principal, accrued, comisionUSD, total, tir: tir.tir, precioSucio: tir.precioSucio };
+  };
+
+  const r = calc();
+  const fmt = (n) => n?.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const today = new Date();
+  const fecha = `${String(today.getDate()).padStart(2,"0")}/${String(today.getMonth()+1).padStart(2,"0")}/${today.getFullYear()}`;
+  const settle = new Date(today); settle.setDate(settle.getDate() + 2);
+  const fechaSettle = `${String(settle.getDate()).padStart(2,"0")}/${String(settle.getMonth()+1).padStart(2,"0")}/${settle.getFullYear()}`;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.65)" }} onClick={onClose}>
-      <div className="rounded-xl p-6 w-96 text-white" style={{ backgroundColor: "#0F1520", border: "1px solid #2A3A50" }} onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-5">
-          <div><div className="text-base font-semibold">Calculadora TIR</div><div className="text-xs text-[#94A3B8] mt-0.5">Vto. {bond.vencimiento}</div></div>
-          <button onClick={onClose} className="text-[#94A3B8] hover:text-white text-xl leading-none">✕</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.75)" }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ backgroundColor: "#0F1520", border: "1px solid #2A3A50", borderRadius: 12, width: 480, maxHeight: "90vh", overflowY: "auto" }}>
+
+        {/* Header */}
+        <div style={{ background: "#1a1a2e", padding: "12px 20px", borderRadius: "12px 12px 0 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ color: "white", fontWeight: 700, fontSize: 13, letterSpacing: 0.5 }}>TICKET DE OPERACIÓN</div>
+            <div style={{ color: "#94A3B8", fontSize: 10, marginTop: 2 }}>Gastón Bengochea Corredor de Bolsa</div>
+          </div>
+          <button onClick={onClose} style={{ color: "#94A3B8", fontSize: 18, background: "none", border: "none", cursor: "pointer" }}>✕</button>
         </div>
-        <div className="flex gap-4 mb-5 text-sm">
-          {[["Cupón anual", bond.cupon?.toFixed(3)+"%"], ["Vencimiento", bond.vencimiento], ["Ask", bond.ask?.toFixed(2) ?? "—"]].map(([lbl, val]) => (
-            <div key={lbl} className="flex-1 rounded-lg px-3 py-2" style={{ backgroundColor: "#1A2535" }}>
-              <div className="text-[#94A3B8] text-xs mb-1">{lbl}</div>
-              <div className="font-mono font-semibold">{val}</div>
-            </div>
-          ))}
-        </div>
-        <div className="mb-5">
-          <label className="block text-xs text-[#94A3B8] mb-1.5">Precio limpio</label>
-          <input type="number" value={precioInput} onChange={(e) => setPrecioInput(e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-white font-mono text-sm focus:outline-none" style={{ backgroundColor: "#1A2535", border: "1px solid #2A3A50" }} step="0.01" placeholder="Ej: 102.50" />
-        </div>
-        {resultado ? (
-          <div className="space-y-2">
-            {[["Cupón corrido", resultado.cuponCorrido], ["Precio sucio", resultado.precioSucio]].map(([lbl, val]) => (
-              <div key={lbl} className="flex justify-between text-sm py-2 border-b" style={{ borderColor: "#1E2D40" }}>
-                <span className="text-[#94A3B8]">{lbl}</span><span className="font-mono">{val}</span>
-              </div>
-            ))}
-            <div className="flex justify-between items-center pt-2">
-              <span className="text-sm text-[#94A3B8]">TIR anual efectiva</span>
-              <span className="text-2xl font-bold font-mono" style={{ color: activeConfig?.color ?? "#5B8DEF" }}>{resultado.tir}%</span>
+
+        <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+
+          {/* Info del bono */}
+          <div style={{ background: "#1A2535", borderRadius: 8, padding: "10px 14px" }}>
+            <div style={{ color: "#94A3B8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Bono</div>
+            <div style={{ color: "white", fontWeight: 700, fontSize: 12 }}>{bond.emisor}</div>
+            <div style={{ display: "flex", gap: 16, marginTop: 6 }}>
+              {[["Cupón", bond.cupon?.toFixed(3) + "%"], ["Vencimiento", bond.vencimiento], ["Ask", bond.ask?.toFixed(2) ?? "—"]].map(([l, v]) => (
+                <div key={l}>
+                  <div style={{ color: "#64748B", fontSize: 9 }}>{l}</div>
+                  <div style={{ color: "#CBD5E0", fontSize: 11, fontFamily: "monospace", fontWeight: 600 }}>{v}</div>
+                </div>
+              ))}
             </div>
           </div>
-        ) : precioInput !== "" ? (
-          <div className="text-center text-[#94A3B8] text-sm py-4">No se puede calcular con ese precio</div>
-        ) : (
-          <div className="text-center text-[#94A3B8] text-sm py-4">Ingresá un precio para calcular la TIR</div>
-        )}
+
+          {/* Trader */}
+          <div>
+            <label style={{ color: "#94A3B8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>Asesor</label>
+            <input value={trader} onChange={e => setTrader(e.target.value)} placeholder="Nombre del asesor" style={{ width: "100%", background: "#1A2535", border: "1px solid #2A3A50", borderRadius: 6, padding: "7px 10px", color: "white", fontSize: 12, outline: "none" }} />
+          </div>
+
+          {/* Inputs en grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {[["Precio limpio", precio, setPrecio, "0.01", "Ej: 95.00"], ["Nominal (USD)", nominal, setNominal, "1000", "Ej: 100000"]].map(([lbl, val, set, step, ph]) => (
+              <div key={lbl}>
+                <label style={{ color: "#94A3B8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>{lbl}</label>
+                <input type="number" value={val} onChange={e => set(e.target.value)} placeholder={ph} step={step} style={{ width: "100%", background: "#1A2535", border: "1px solid #2A3A50", borderRadius: 6, padding: "7px 10px", color: "white", fontSize: 12, fontFamily: "monospace", outline: "none" }} />
+              </div>
+            ))}
+          </div>
+
+          {/* Comisión con toggle */}
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <label style={{ color: "#94A3B8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5 }}>Comisión (%)</label>
+              <button onClick={() => setComisionOn(!comisionOn)} style={{ background: comisionOn ? "#1a1a2e" : "#1A2535", border: `1px solid ${comisionOn ? "#4A6FA5" : "#2A3A50"}`, borderRadius: 20, padding: "2px 10px", color: comisionOn ? "#93C5FD" : "#64748B", fontSize: 9, cursor: "pointer", fontWeight: 600, letterSpacing: 0.3 }}>
+                {comisionOn ? "INCLUIDA" : "EXCLUIDA"}
+              </button>
+            </div>
+            <input type="number" value={comision} onChange={e => setComision(e.target.value)} step="0.01" disabled={!comisionOn} style={{ width: "100%", background: comisionOn ? "#1A2535" : "#111827", border: "1px solid #2A3A50", borderRadius: 6, padding: "7px 10px", color: comisionOn ? "white" : "#4B5563", fontSize: 12, fontFamily: "monospace", outline: "none" }} />
+          </div>
+
+          {/* Resultados */}
+          {r ? (
+            <div style={{ background: "#1A2535", borderRadius: 8, padding: "12px 14px" }}>
+              <div style={{ color: "#94A3B8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Resumen de la operación</div>
+              {[
+                ["Fecha Trade", fecha],
+                ["Fecha Liquidación", fechaSettle + " (T+2)"],
+                ["Precio sucio", r.precioSucio],
+                ["Principal", "USD " + fmt(r.principal)],
+                ["Cupón corrido", "USD " + fmt(r.accrued)],
+                ...(comisionOn ? [["Comisión", "USD " + fmt(r.comisionUSD)]] : []),
+              ].map(([l, v]) => (
+                <div key={l} style={{ display: "flex", justifyContent: "space-between", paddingBottom: 7, marginBottom: 7, borderBottom: "1px solid #1E2D40" }}>
+                  <span style={{ color: "#94A3B8", fontSize: 11 }}>{l}</span>
+                  <span style={{ color: "#CBD5E0", fontSize: 11, fontFamily: "monospace" }}>{v}</span>
+                </div>
+              ))}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+                <span style={{ color: "#94A3B8", fontSize: 11 }}>TIR</span>
+                <span style={{ color: "white", fontSize: 15, fontWeight: 700, fontFamily: "monospace" }}>{r.tir}%</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, paddingTop: 10, borderTop: "2px solid #2A3A50" }}>
+                <span style={{ color: "white", fontSize: 12, fontWeight: 600 }}>TOTAL A PAGAR</span>
+                <span style={{ color: "white", fontSize: 18, fontWeight: 700, fontFamily: "monospace" }}>USD {fmt(r.total)}</span>
+              </div>
+            </div>
+          ) : (
+            <div style={{ textAlign: "center", color: "#64748B", fontSize: 12, padding: "12px 0" }}>Completá precio y nominal para calcular</div>
+          )}
+
+          {/* Botón imprimir */}
+          {r && (
+            <button onClick={() => printTicket({ bond, precio, nominal, trader, comision, comisionOn, r, fecha, fechaSettle })}
+              style={{ background: "#1a1a2e", border: "1px solid #4A6FA5", borderRadius: 8, padding: "9px 0", color: "white", fontSize: 12, fontWeight: 700, cursor: "pointer", letterSpacing: 0.5 }}>
+              Imprimir Ticket
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -380,7 +539,7 @@ export default function BondPanel() {
 
   return (
     <div className="px-6 py-5 space-y-5">
-      {tirModal && <TIRModal bond={tirModal} activeConfig={activeConfig} onClose={() => setTirModal(null)} />}
+      {tirModal && <TradeTicket bond={tirModal} activeConfig={activeConfig} onClose={() => setTirModal(null)} />}
       <div className="flex items-center justify-between">
         <span className="text-[20px] font-semibold text-white">Bonos</span>
         <div className="flex items-center gap-2">
@@ -490,7 +649,7 @@ export default function BondPanel() {
                     <td className="px-4 py-2 text-right text-sm text-white font-mono whitespace-nowrap">{b.ask?.toFixed(2) ?? "—"}</td>
                     <td className="px-4 py-2 text-right text-sm font-semibold font-mono whitespace-nowrap" style={{ color: activeConfig.color }}>{b.tir != null ? b.tir.toFixed(2)+"%" : "—"}</td>
                     <td className="px-4 py-2 text-center whitespace-nowrap">
-                      <button onClick={() => setTirModal(b)} className="text-xs px-3 py-1 rounded-md font-semibold transition hover:opacity-80" style={{ backgroundColor: activeConfig.color+"22", color: activeConfig.color, border: `1px solid ${activeConfig.color}44` }}>Calc TIR</button>
+                      <button onClick={() => setTirModal(b)} className="text-xs px-3 py-1 rounded-md font-semibold transition hover:opacity-80" style={{ backgroundColor: activeConfig.color+"22", color: activeConfig.color, border: `1px solid ${activeConfig.color}44` }}>Ticket</button>
                     </td>
                   </tr>
                 ))}
