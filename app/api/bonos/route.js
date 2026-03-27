@@ -67,7 +67,10 @@ function parseSheet(text) {
   const lines = text.split("\n").filter((l) => l.trim());
   if (lines.length < 2) return [];
 
-  // Columns: EMISOR, CUPON, VENCIMIENTO, ASK, BID, TIR
+  // Columns: A=EMISOR, B=CUPON, C=VENCIMIENTO, D=BID, E=ASK, F=TIR
+  const headerCells = parseCSVLine(lines[0]);
+  console.log("[bonos] Sheet header:", headerCells.map((c, i) => `${String.fromCharCode(65+i)}=${c}`).join(", "));
+
   const rows = [];
   for (let i = 1; i < lines.length; i++) {
     const cells = parseCSVLine(lines[i]);
