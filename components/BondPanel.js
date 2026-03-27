@@ -166,17 +166,21 @@ function makeSectionHTML({ key, cfg, data, showChart }) {
   const rows = data.map((b, i) => {
     const alt = i % 2 === 1 ? ' class="alt"' : '';
     return `<tr${alt}>
-      <td style="padding:2.5px 5px">${b.emisor ?? "—"}</td>
-      <td class="mono" style="padding:2.5px 5px">${b.cupon !== null ? b.cupon.toFixed(3) + "%" : "—"}</td>
-      <td style="padding:2.5px 5px">${b.vencimiento}</td>
-      <td class="r bid" style="padding:2.5px 5px">${b.bid?.toFixed(2) ?? "—"}</td>
-      <td class="r mono" style="padding:2.5px 5px">${b.ask?.toFixed(2) ?? "—"}</td>
-      <td class="r tir" style="padding:2.5px 5px;color:#1a1a2e">${b.tir != null ? b.tir.toFixed(2) + "%" : "—"}</td>
+      <td style="padding:2.5px 6px;color:#1a1a2e">${b.emisor ?? "—"}</td>
+      <td style="padding:2.5px 6px;text-align:right;font-family:monospace;color:#1a1a2e">${b.cupon !== null ? b.cupon.toFixed(3) + "%" : "—"}</td>
+      <td style="padding:2.5px 6px;text-align:right;color:#1a1a2e">${b.vencimiento}</td>
+      <td style="padding:2.5px 6px;text-align:right;font-family:monospace;color:#888">${b.bid?.toFixed(2) ?? "—"}</td>
+      <td style="padding:2.5px 6px;text-align:right;font-family:monospace;color:#1a1a2e">${b.ask?.toFixed(2) ?? "—"}</td>
+      <td style="padding:2.5px 6px;text-align:right;font-family:monospace;font-weight:700;color:#1a1a2e">${b.tir != null ? b.tir.toFixed(2) + "%" : "—"}</td>
     </tr>`;
   }).join("");
   const thead = `<thead><tr>
-    <th style="width:38%;padding:3px 5px">Emisor</th><th style="width:8%;padding:3px 5px">Cupón</th><th style="width:12%;padding:3px 5px">Vencimiento</th>
-    <th class="r" style="width:12%;padding:3px 5px">Precio Compra</th><th class="r" style="width:12%;padding:3px 5px">Precio Venta</th><th class="r" style="width:8%;padding:3px 5px">TIR</th>
+    <th style="width:42%;padding:3px 6px;text-align:left;font-size:7.5px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #c8ccd8">Emisor</th>
+    <th style="width:10%;padding:3px 6px;text-align:right;font-size:7.5px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #c8ccd8">Cupón</th>
+    <th style="width:13%;padding:3px 6px;text-align:right;font-size:7.5px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #c8ccd8">Vencimiento</th>
+    <th style="width:12%;padding:3px 6px;text-align:right;font-size:7.5px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #c8ccd8">P. Compra</th>
+    <th style="width:12%;padding:3px 6px;text-align:right;font-size:7.5px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #c8ccd8">P. Venta</th>
+    <th style="width:11%;padding:3px 6px;text-align:right;font-size:7.5px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #c8ccd8">TIR</th>
   </tr></thead>`;
   const chartHTML = hasCurve
     ? `<div class="chart-box"><svg viewBox="0 0 700 160" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">${buildCurveSVG(data, color, names.title, null, null, "", false)}</svg></div>`
