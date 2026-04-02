@@ -42,7 +42,7 @@ function getCouponDates(maturityDate) {
   return dates;
 }
 
-function calcularTIR(precioLimpio, cuponAnual, vencimientoStr) {
+function calcularTIR(precioLimpio, cuponAnual, vencimientoStr, convencion = "30/360") {
   const precio = parseFloat(precioLimpio);
   const cupon = parseFloat(cuponAnual);
   if (isNaN(precio) || isNaN(cupon) || precio <= 0 || cupon < 0) return null;
@@ -51,19 +51,37 @@ function calcularTIR(precioLimpio, cuponAnual, vencimientoStr) {
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
   if (maturity <= hoy) return null;
+
   const couponSemestral = (cupon / 100 / 2) * 100;
   const allDates = getCouponDates(maturity);
   if (allDates.length < 2) return null;
   const prevCoupon = allDates[0];
   const nextCoupon = allDates[1];
   const futureDates = allDates.slice(1);
-  const T = (nextCoupon - prevCoupon) / 86400000;
-  const t = (hoy - prevCoupon) / 86400000;
+
+  let T, t;
+
+  if (convencion === "30/360") {
+    // 30/360: cada mes = 30 días, cada período semestral = 180 días
+    const d1 = prevCoupon, d2 = nextCoupon, d3 = hoy;
+    T = 180;
+    t = (d3.getFullYear() - d1.getFullYear()) * 360
+      + (d3.getMonth() - d1.getMonth()) * 30
+      + Math.min(d3.getDate(), 30) - Math.min(d1.getDate(), 30);
+    // ajuste 30/360 estándar
+    t = Math.max(0, Math.min(t, 180));
+  } else {
+    // Actual/360
+    T = (nextCoupon - prevCoupon) / 86400000;
+    t = (hoy - prevCoupon) / 86400000;
+  }
+
   const cuponCorrido = couponSemestral * (t / T);
   const precioSucio = precio + cuponCorrido;
   const N = futureDates.length;
   const flujos = futureDates.map((_, i) => i === N - 1 ? couponSemestral + 100 : couponSemestral);
   const exponentes = futureDates.map((_, k) => (T - t) / T + k);
+
   function precioDado(r) { return flujos.reduce((s, f, i) => s + f / Math.pow(1 + r, exponentes[i]), 0); }
   let lo = -0.5, hi = 0.5;
   if (precioDado(hi) > precioSucio) hi = 2.0;
@@ -358,6 +376,11 @@ function printTicket({ bond, precio, nominal, trader, comision, comisionOn, r, f
   if (win) { win.document.write(html); win.document.close(); }
 }
 
+function getConvencion(key) {
+  const usa = ["US Treasuries", "US TIPS", "T-bills", "Strips"];
+  return usa.includes(key) ? "act/360" : "30/360";
+}
+
 function TradeTicket({ bond, activeConfig, onClose }) {
   const [precio, setPrecio] = useState(bond.ask?.toFixed(2) ?? "");
   const [nominal, setNominal] = useState("100000");
@@ -370,7 +393,7 @@ function TradeTicket({ bond, activeConfig, onClose }) {
     const n = parseFloat(nominal);
     const c = parseFloat(comision) || 0;
     if (isNaN(p) || isNaN(n) || p <= 0 || n <= 0) return null;
-    const tir = calcularTIR(precio, bond.cupon, bond.vencimiento);
+    const tir = calcularTIR(precio, bond.cupon, bond.vencimiento, bond.convencion ?? "30/360");
     if (!tir) return null;
     const principal = (n * p) / 100;
     const accrued = (n * parseFloat(tir.cuponCorrido)) / 100;
@@ -380,7 +403,7 @@ function TradeTicket({ bond, activeConfig, onClose }) {
     let tirNeta = null;
     if (comisionOn && c > 0) {
       const comisionEnPrecio = parseFloat(tir.precioSucio) * c / 100;
-      const resultNeta = calcularTIR((p + comisionEnPrecio).toFixed(4), bond.cupon, bond.vencimiento);
+      const resultNeta = calcularTIR((p + comisionEnPrecio).toFixed(4), bond.cupon, bond.vencimiento, bond.convencion ?? "30/360");
       tirNeta = resultNeta ? resultNeta.tir : null;
     }
     return { principal, accrued, comisionUSD, total, tir: tir.tir, tirNeta, precioSucio: tir.precioSucio };
@@ -659,7 +682,7 @@ export default function BondPanel() {
                     <td className="px-4 py-2 text-right text-sm text-white font-mono whitespace-nowrap">{b.ask?.toFixed(2) ?? "—"}</td>
                     <td className="px-4 py-2 text-right text-sm font-semibold font-mono whitespace-nowrap" style={{ color: activeConfig.color }}>{b.tir != null ? b.tir.toFixed(2)+"%" : "—"}</td>
                     <td className="px-4 py-2 text-center whitespace-nowrap">
-                      <button onClick={() => setTirModal(b)} className="text-xs px-3 py-1 rounded-md font-semibold transition hover:opacity-80" style={{ backgroundColor: activeConfig.color+"22", color: activeConfig.color, border: `1px solid ${activeConfig.color}44` }}>Ticket</button>
+                      <button onClick={() => setTirModal({...b, convencion: getConvencion(active)})} className="text-xs px-3 py-1 rounded-md font-semibold transition hover:opacity-80" style={{ backgroundColor: activeConfig.color+"22", color: activeConfig.color, border: `1px solid ${activeConfig.color}44` }}>Ticket</button>
                     </td>
                   </tr>
                 ))}
