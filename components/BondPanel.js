@@ -42,6 +42,12 @@ function getCouponDates(maturityDate) {
   return dates;
 }
 
+function dias30360(d1, d2) {
+  const y1 = d1.getFullYear(), m1 = d1.getMonth() + 1, dd1 = Math.min(d1.getDate(), 30);
+  const y2 = d2.getFullYear(), m2 = d2.getMonth() + 1, dd2 = Math.min(d2.getDate(), 30);
+  return (y2 - y1) * 360 + (m2 - m1) * 30 + (dd2 - dd1);
+}
+
 function calcularTIR(precioLimpio, cuponAnual, vencimientoStr, convencion = "30/360") {
   const precio = parseFloat(precioLimpio);
   const cupon = parseFloat(cuponAnual);
@@ -60,20 +66,14 @@ function calcularTIR(precioLimpio, cuponAnual, vencimientoStr, convencion = "30/
   const futureDates = allDates.slice(1);
 
   let T, t;
-
-  if (convencion === "30/360") {
-    // 30/360: cada mes = 30 días, cada período semestral = 180 días
-    const d1 = prevCoupon, d2 = nextCoupon, d3 = hoy;
-    T = 180;
-    t = (d3.getFullYear() - d1.getFullYear()) * 360
-      + (d3.getMonth() - d1.getMonth()) * 30
-      + Math.min(d3.getDate(), 30) - Math.min(d1.getDate(), 30);
-    // ajuste 30/360 estándar
-    t = Math.max(0, Math.min(t, 180));
-  } else {
-    // Actual/360
+  if (convencion === "act/360") {
     T = (nextCoupon - prevCoupon) / 86400000;
     t = (hoy - prevCoupon) / 86400000;
+  } else {
+    // 30/360
+    T = 180;
+    t = dias30360(prevCoupon, hoy);
+    t = Math.max(0, Math.min(t, 180));
   }
 
   const cuponCorrido = couponSemestral * (t / T);
