@@ -364,7 +364,7 @@ function printTicket({ bond, precio, nominal, trader, comision, comisionOn, r, f
 <div class="row"><span class="lbl">Principal</span><span class="val">USD ${fmt(r.principal)}</span></div>
     <div class="row"><span class="lbl">Cupón corrido</span><span class="val">USD ${fmt(r.accrued)}</span></div>
     ${comisionOn ? `<div class="row"><span class="lbl">Comisión</span><span class="val">USD ${fmt(r.comisionUSD)}</span></div>` : ""}
-    ${comisionOn ? `<div class="row"><span class="lbl">IVA (22%)</span><span class="val">USD ${fmt(r.ivaUSD)}</span></div>` : ""}
+    ${comisionOn && r.ivaUSD > 0 ? `<div class="row"><span class="lbl">IVA (22%)</span><span class="val">USD ${fmt(r.ivaUSD)}</span></div>` : ""}
     <div class="tir-row"><span class="lbl">TIR (mercado)</span><span class="val">${r.tir}%</span></div>
     ${comisionOn && r.tirNeta ? `<div class="tir-row"><span class="lbl">TIR neta (c/ comisión)</span><span class="val">${r.tirNeta}%</span></div>` : ""}
     <div class="total-row"><span class="lbl">TOTAL A PAGAR</span><span class="val">USD ${fmt(r.total)}</span></div>
@@ -382,6 +382,11 @@ function printTicket({ bond, precio, nominal, trader, comision, comisionOn, r, f
 function getConvencion(key) {
   const usa = ["US Treasuries", "US TIPS", "T-bills", "Strips"];
   return usa.includes(key) ? "act/360" : "30/360";
+}
+
+function llevaIVA(sectionKey) {
+  const sinIVA = ["Uruguay USD", "Uruguay Pesos", "Notas UI", "Notas Pesos"];
+  return !sinIVA.includes(sectionKey);
 }
 
 function TradeTicket({ bond, activeConfig, onClose }) {
@@ -402,7 +407,7 @@ function TradeTicket({ bond, activeConfig, onClose }) {
     const accrued = (n * parseFloat(tir.cuponCorrido)) / 100;
     const efectivo = principal + accrued;
     const comisionUSD = comisionOn ? efectivo * c / 100 : 0;
-    const ivaUSD = comisionOn ? comisionUSD * 0.22 : 0;
+    const ivaUSD = (comisionOn && bond.llevaIVA) ? comisionUSD * 0.22 : 0;
     const total = efectivo + comisionUSD + ivaUSD;
     let tirNeta = null;
     if (comisionOn && c > 0) {
@@ -482,7 +487,7 @@ function TradeTicket({ bond, activeConfig, onClose }) {
                 ["Principal", "USD " + fmt(r.principal)],
                 ["Cupón corrido", "USD " + fmt(r.accrued)],
                 ...(comisionOn ? [["Comisión", "USD " + fmt(r.comisionUSD)]] : []),
-                ...(comisionOn ? [["IVA (22%)", "USD " + fmt(r.ivaUSD)]] : []),
+                ...(comisionOn && r.ivaUSD > 0 ? [["IVA (22%)", "USD " + fmt(r.ivaUSD)]] : []),
               ].map(([l, v]) => (
                 <div key={l} style={{ display: "flex", justifyContent: "space-between", paddingBottom: 7, marginBottom: 7, borderBottom: "1px solid #1E2D40" }}>
                   <span style={{ color: "#94A3B8", fontSize: 11 }}>{l}</span>
@@ -687,7 +692,7 @@ export default function BondPanel() {
                     <td className="px-4 py-2 text-right text-sm text-white font-mono whitespace-nowrap">{b.ask?.toFixed(2) ?? "—"}</td>
                     <td className="px-4 py-2 text-right text-sm font-semibold font-mono whitespace-nowrap" style={{ color: activeConfig.color }}>{b.tir != null ? b.tir.toFixed(2)+"%" : "—"}</td>
                     <td className="px-4 py-2 text-center whitespace-nowrap">
-                      <button onClick={() => setTirModal({...b, convencion: getConvencion(active)})} className="text-xs px-3 py-1 rounded-md font-semibold transition hover:opacity-80" style={{ backgroundColor: activeConfig.color+"22", color: activeConfig.color, border: `1px solid ${activeConfig.color}44` }}>Ticket</button>
+                      <button onClick={() => setTirModal({...b, convencion: getConvencion(active), llevaIVA: llevaIVA(active)})} className="text-xs px-3 py-1 rounded-md font-semibold transition hover:opacity-80" style={{ backgroundColor: activeConfig.color+"22", color: activeConfig.color, border: `1px solid ${activeConfig.color}44` }}>Ticket</button>
                     </td>
                   </tr>
                 ))}
