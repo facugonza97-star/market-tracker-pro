@@ -43,9 +43,11 @@ function getCouponDates(maturityDate) {
 }
 
 function dias30360(d1, d2) {
-  const y1 = d1.getFullYear(), m1 = d1.getMonth() + 1, dd1 = Math.min(d1.getDate(), 30);
-  const y2 = d2.getFullYear(), m2 = d2.getMonth() + 1, dd2 = Math.min(d2.getDate(), 30);
-  return (y2 - y1) * 360 + (m2 - m1) * 30 + (dd2 - dd1);
+  let dd1 = d1.getDate(), mm1 = d1.getMonth() + 1, yy1 = d1.getFullYear();
+  let dd2 = d2.getDate(), mm2 = d2.getMonth() + 1, yy2 = d2.getFullYear();
+  if (dd1 === 31) dd1 = 30;
+  if (dd2 === 31 && dd1 === 30) dd2 = 30;
+  return (yy2 - yy1) * 360 + (mm2 - mm1) * 30 + (dd2 - dd1);
 }
 
 function calcularTIR(precioLimpio, cuponAnual, vencimientoStr, convencion = "30/360") {
