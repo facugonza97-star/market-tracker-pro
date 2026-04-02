@@ -2,6 +2,147 @@
 import React, { useState, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from "recharts";
 
+function printLRMTicket({ efectivo, plazo, tasa, comision, r, fecha }) {
+  const fmt = (n) => n?.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Ticket LRM</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:Arial,sans-serif;font-size:10px;color:#1a1a2e;padding:30px 36px;max-width:520px;margin:0 auto}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #1a1a2e}
+    .header h1{font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:2px}
+    .header .sub{font-size:8px;color:#888}
+    .logo-name{font-size:12px;font-weight:700;text-align:right}
+    .logo-sub{font-size:8px;color:#999;display:block;text-align:right;margin-top:1px}
+    .section-title{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #e8e8e8}
+    .row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f0f0}
+    .row .lbl{color:#666;font-size:10px}
+    .row .val{font-family:monospace;font-size:10px;color:#1a1a2e}
+    .total-row{display:flex;justify-content:space-between;align-items:center;padding-top:10px;margin-top:4px;border-top:2px solid #1a1a2e}
+    .total-row .lbl{font-size:12px;font-weight:700;color:#1a1a2e}
+    .total-row .val{font-size:16px;font-weight:700;font-family:monospace;color:#1a1a2e}
+    .footer{margin-top:20px;padding-top:8px;border-top:1px solid #ccc;display:flex;justify-content:space-between}
+    .footer p{font-size:7px;color:#aaa}
+    @media print{body{padding:20px 24px}@page{margin:.5cm;size:A4}}
+  </style></head><body>
+  <div class="header">
+    <div>
+      <h1>Ticket LRM — Letra de Regulación Monetaria</h1>
+      <div class="sub">Gastón Bengochea Corredor de Bolsa · Precios indicativos</div>
+    </div>
+    <div>
+      <div class="logo-name">Gastón Bengochea</div>
+      <span class="logo-sub">Corredor de Bolsa</span>
+    </div>
+  </div>
+  <div style="margin-bottom:16px">
+    <div class="section-title">Parámetros</div>
+    <div class="row"><span class="lbl">Valor efectivo</span><span class="val">$ ${fmt(parseFloat(efectivo))}</span></div>
+    <div class="row"><span class="lbl">Plazo</span><span class="val">${plazo} días</span></div>
+    <div class="row"><span class="lbl">Tasa efectiva anual</span><span class="val">${tasa}%</span></div>
+    <div class="row"><span class="lbl">Comisión GB</span><span class="val">${comision}%</span></div>
+  </div>
+  <div style="margin-bottom:16px">
+    <div class="section-title">Resultado</div>
+    <div class="row"><span class="lbl">Valor nominal</span><span class="val">$ ${fmt(r.valorNominal)}</span></div>
+    <div class="row"><span class="lbl">Comisión GB</span><span class="val">$ ${fmt(r.comisionUSD)}</span></div>
+    <div class="total-row"><span class="lbl">GANANCIA NETA</span><span class="val">$ ${fmt(r.gananciaNeta)}</span></div>
+  </div>
+  <div class="footer">
+    <p>Gastón Bengochea Corredor de Bolsa · Precios indicativos, no constituyen oferta de compraventa</p>
+    <p>${fecha}</p>
+  </div>
+  <script>window.onload=()=>window.print();<\/script>
+  </body></html>`;
+  const win = window.open("", "_blank");
+  if (win) { win.document.write(html); win.document.close(); }
+}
+
+function LRMCalculadora({ onClose }) {
+  const [efectivo, setEfectivo] = useState("");
+  const [plazo, setPlazo] = useState("");
+  const [tasa, setTasa] = useState("");
+  const [comision, setComision] = useState("");
+
+  const calc = () => {
+    const e = parseFloat(efectivo);
+    const d = parseFloat(plazo);
+    const t = parseFloat(tasa);
+    const c = parseFloat(comision) || 0;
+    if (isNaN(e) || isNaN(d) || isNaN(t) || e <= 0 || d <= 0 || t <= 0) return null;
+    const precio = 1 / Math.pow(1 + t / 100, d / 365);
+    const coeficiente = 1 / precio;
+    const valorNominal = e * coeficiente;
+    const comisionUSD = e * c / 100;
+    const gananciaNeta = valorNominal - e - comisionUSD;
+    return { precio, coeficiente, valorNominal, comisionUSD, gananciaNeta };
+  };
+
+  const r = calc();
+  const fmt = (n) => n?.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const today = new Date();
+  const fecha = `${String(today.getDate()).padStart(2,"0")}/${String(today.getMonth()+1).padStart(2,"0")}/${today.getFullYear()}`;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.75)" }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ backgroundColor: "#0F1520", border: "1px solid #2A3A50", borderRadius: 12, width: 440, maxHeight: "90vh", overflowY: "auto" }}>
+        <div style={{ background: "#1a1a2e", padding: "12px 20px", borderRadius: "12px 12px 0 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ color: "white", fontWeight: 700, fontSize: 13, letterSpacing: 0.5 }}>CALCULADORA LRM</div>
+            <div style={{ color: "#94A3B8", fontSize: 10, marginTop: 2 }}>Letras de Regulación Monetaria</div>
+          </div>
+          <button onClick={onClose} style={{ color: "#94A3B8", fontSize: 18, background: "none", border: "none", cursor: "pointer" }}>✕</button>
+        </div>
+
+        <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {[
+              ["Valor efectivo (UYU)", efectivo, setEfectivo, "Ej: 100000"],
+              ["Plazo (días)", plazo, setPlazo, "Ej: 180"],
+              ["Tasa efectiva anual (%)", tasa, setTasa, "Ej: 9.5"],
+              ["Comisión (%)", comision, setComision, "Ej: 0.30"],
+            ].map(([lbl, val, set, ph]) => (
+              <div key={lbl}>
+                <label style={{ color: "#94A3B8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>{lbl}</label>
+                <input type="number" value={val} onChange={e => set(e.target.value)} placeholder={ph} style={{ width: "100%", background: "#1A2535", border: "1px solid #2A3A50", borderRadius: 6, padding: "7px 10px", color: "white", fontSize: 12, fontFamily: "monospace", outline: "none" }} />
+              </div>
+            ))}
+          </div>
+
+          {r ? (
+            <div style={{ background: "#1A2535", borderRadius: 8, padding: "12px 14px" }}>
+              <div style={{ color: "#94A3B8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Resumen</div>
+              {[
+                ["Precio", r.precio.toFixed(6)],
+                ["Coeficiente", r.coeficiente.toFixed(6)],
+                ["Valor nominal", "$ " + fmt(r.valorNominal)],
+                ["Comisión GB", "$ " + fmt(r.comisionUSD)],
+              ].map(([l, v]) => (
+                <div key={l} style={{ display: "flex", justifyContent: "space-between", paddingBottom: 7, marginBottom: 7, borderBottom: "1px solid #1E2D40" }}>
+                  <span style={{ color: "#94A3B8", fontSize: 11 }}>{l}</span>
+                  <span style={{ color: "#CBD5E0", fontSize: 11, fontFamily: "monospace" }}>{v}</span>
+                </div>
+              ))}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4, paddingTop: 8, borderTop: "2px solid #2A3A50" }}>
+                <span style={{ color: "white", fontSize: 12, fontWeight: 600 }}>GANANCIA NETA</span>
+                <span style={{ color: "#48BB78", fontSize: 16, fontWeight: 700, fontFamily: "monospace" }}>$ {fmt(r.gananciaNeta)}</span>
+              </div>
+            </div>
+          ) : (
+            <div style={{ textAlign: "center", color: "#64748B", fontSize: 12, padding: "12px 0" }}>Completá los campos para calcular</div>
+          )}
+
+          {r && (
+            <button onClick={() => printLRMTicket({ efectivo, plazo, tasa, comision, r, fecha })}
+              style={{ background: "#1a1a2e", border: "1px solid #4A6FA5", borderRadius: 8, padding: "9px 0", color: "white", fontSize: 12, fontWeight: 700, cursor: "pointer", letterSpacing: 0.5 }}>
+              Imprimir Ticket
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CustomTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
@@ -22,6 +163,7 @@ function CustomTooltip({ active, payload, label }) {
 export default function LRMPanel() {
   const [lrm, setLrm] = useState(null);
   const [calendar, setCalendar] = useState(null);
+  const [lrmModal, setLrmModal] = useState(false);
 
   useEffect(() => {
     fetch("/api/lrm").then((r) => r.json()).then(setLrm).catch(() => {});
@@ -40,8 +182,10 @@ export default function LRMPanel() {
 
   return (
     <div className="bg-card border border-border rounded-xl p-5">
+      {lrmModal && <LRMCalculadora onClose={() => setLrmModal(false)} />}
       <div className="flex justify-between items-center mb-4">
         <span className="text-[20px] font-semibold text-white">🇺🇾 Letras de Regulación Monetaria (LRM)</span>
+        <button onClick={() => setLrmModal(true)} className="text-xs px-3 py-1.5 rounded-md font-semibold transition hover:opacity-80" style={{ backgroundColor: "#F59E0B22", color: "#F59E0B", border: "1px solid #F59E0B44" }}>Calculadora LRM</button>
       </div>
 
       {chartData.length > 0 ? (
