@@ -362,6 +362,7 @@ function printTicket({ bond, precio, nominal, trader, comision, comisionOn, r, f
 <div class="row"><span class="lbl">Principal</span><span class="val">USD ${fmt(r.principal)}</span></div>
     <div class="row"><span class="lbl">Cupón corrido</span><span class="val">USD ${fmt(r.accrued)}</span></div>
     ${comisionOn ? `<div class="row"><span class="lbl">Comisión</span><span class="val">USD ${fmt(r.comisionUSD)}</span></div>` : ""}
+    ${comisionOn ? `<div class="row"><span class="lbl">IVA (22%)</span><span class="val">USD ${fmt(r.ivaUSD)}</span></div>` : ""}
     <div class="tir-row"><span class="lbl">TIR (mercado)</span><span class="val">${r.tir}%</span></div>
     ${comisionOn && r.tirNeta ? `<div class="tir-row"><span class="lbl">TIR neta (c/ comisión)</span><span class="val">${r.tirNeta}%</span></div>` : ""}
     <div class="total-row"><span class="lbl">TOTAL A PAGAR</span><span class="val">USD ${fmt(r.total)}</span></div>
@@ -399,14 +400,15 @@ function TradeTicket({ bond, activeConfig, onClose }) {
     const accrued = (n * parseFloat(tir.cuponCorrido)) / 100;
     const efectivo = principal + accrued;
     const comisionUSD = comisionOn ? efectivo * c / 100 : 0;
-    const total = efectivo + comisionUSD;
+    const ivaUSD = comisionOn ? comisionUSD * 0.22 : 0;
+    const total = efectivo + comisionUSD + ivaUSD;
     let tirNeta = null;
     if (comisionOn && c > 0) {
       const comisionEnPrecio = parseFloat(tir.precioSucio) * c / 100;
       const resultNeta = calcularTIR((p + comisionEnPrecio).toFixed(4), bond.cupon, bond.vencimiento, bond.convencion ?? "30/360");
       tirNeta = resultNeta ? resultNeta.tir : null;
     }
-    return { principal, accrued, comisionUSD, total, tir: tir.tir, tirNeta, precioSucio: tir.precioSucio };
+    return { principal, accrued, comisionUSD, ivaUSD, total, tir: tir.tir, tirNeta, precioSucio: tir.precioSucio };
   };
 
   const r = calc();
@@ -478,6 +480,7 @@ function TradeTicket({ bond, activeConfig, onClose }) {
                 ["Principal", "USD " + fmt(r.principal)],
                 ["Cupón corrido", "USD " + fmt(r.accrued)],
                 ...(comisionOn ? [["Comisión", "USD " + fmt(r.comisionUSD)]] : []),
+                ...(comisionOn ? [["IVA (22%)", "USD " + fmt(r.ivaUSD)]] : []),
               ].map(([l, v]) => (
                 <div key={l} style={{ display: "flex", justifyContent: "space-between", paddingBottom: 7, marginBottom: 7, borderBottom: "1px solid #1E2D40" }}>
                   <span style={{ color: "#94A3B8", fontSize: 11 }}>{l}</span>
