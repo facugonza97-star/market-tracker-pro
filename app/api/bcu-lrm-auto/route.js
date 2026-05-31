@@ -1,5 +1,3 @@
-import { PDFParse } from 'pdf-parse';
-
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
@@ -14,39 +12,25 @@ export async function GET() {
     if (!res.ok) return Response.json({ error: `HTTP ${res.status}` }, { status: 500 });
 
     const buffer = Buffer.from(await res.arrayBuffer());
-    const parser = new PDFParse({ data: buffer });
-    const pdf = await parser.getText();
-    await parser.destroy();
-    const text = pdf.text;
 
-    // Parsear filas: fecha lic | fecha integ | fecha vto | moneda | plazo | monto | hora | tasa actual | tasa anterior
-    const rows = [];
-    const lineRegex = /(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+(PESOS|UI|USD|NT\s+\S+)\s+(\d+)\s+([\d.]+)\s+([\d:,]+)\s+([\d.,]+)\s+([\d.,]+)/g;
-    let match;
-    while ((match = lineRegex.exec(text)) !== null) {
-      rows.push({
-        fechaLic: match[1],
-        fechaVto: match[3],
-        moneda: match[4].trim(),
-        plazo: parseInt(match[5]),
-        tasaActual: parseFloat(match[8].replace(',', '.')),
-        tasaAnterior: parseFloat(match[9].replace(',', '.')),
-      });
+    // Extraer texto del PDF manualmente buscando strings ASCII
+    const text = buffer.toString('latin1');
+    const strings = [];
+    const strRegex = /\(([^\)]{2,})\)/g;
+    let m;
+    while ((m = strRegex.exec(text)) !== null) {
+      const s = m[1].replace(/\\n/g, ' ').replace(/\\/g, '').trim();
+      if (s.length > 1) strings.push(s);
     }
+    const fullText = strings.join(' ');
 
-    // Extraer tasas LRM por plazo estándar (30, 90, 180, 360)
-    // Buscar los 4 plazos más cercanos a esos valores
-    const plazosTarget = [30, 90, 180, 360];
-    const lrm = {};
-    for (const target of plazosTarget) {
-      const closest = rows
-        .filter(r => r.moneda === 'PESOS')
-        .sort((a, b) => Math.abs(a.plazo - target) - Math.abs(b.plazo - target))[0];
-      if (closest) lrm[`${target}d`] = { tasa: closest.tasaActual, plazo: closest.plazo, fechaLic: closest.fechaLic, fechaVto: closest.fechaVto };
-    }
-
-    return Response.json({ lrm, calendario: rows, rawText: text.slice(0, 500) });
+    return Response.json({
+      ok: true,
+      size: buffer.byteLength,
+      textSample: fullText.slice(0, 1000),
+      strings: strings.slice(0, 50)
+    });
   } catch (err) {
-    return Response.json({ error: err.message }, { status: 500 });
+    return Response.json({ error: err.message, stack: err.stack }, { status: 500 });
   }
 }
