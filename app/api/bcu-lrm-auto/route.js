@@ -1,4 +1,4 @@
-import pdfParse from 'pdf-parse';
+import { PDFParse } from 'pdf-parse';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +14,9 @@ export async function GET() {
     if (!res.ok) return Response.json({ error: `HTTP ${res.status}` }, { status: 500 });
 
     const buffer = Buffer.from(await res.arrayBuffer());
-    const pdf = await pdfParse(buffer);
+    const parser = new PDFParse({ data: buffer });
+    const pdf = await parser.getText();
+    await parser.destroy();
     const text = pdf.text;
 
     // Parsear filas: fecha lic | fecha integ | fecha vto | moneda | plazo | monto | hora | tasa actual | tasa anterior
