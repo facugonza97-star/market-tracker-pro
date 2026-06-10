@@ -18,7 +18,7 @@ const TABS = ["Overview", "Tracker", "Bonos", "Forex", "Burbujas", "Watchlist"];
 export default function Home() {
   const { user } = useUser();
   const [tab, setTab] = useState("Overview");
-  const [myTickers, setMyTickers] = useState(null);
+  const [myGroups, setMyGroups] = useState(null);
   const [quotes, setQuotes] = useState(null);
   const [treasury, setTreasury] = useState(null);
   const [news, setNews] = useState(null);
@@ -86,14 +86,14 @@ export default function Home() {
   // Cargar el tracker del usuario cuando se loguea
   useEffect(() => {
     if (!user) {
-      setMyTickers(null);
+      setMyGroups(null);
       if (tab === "Mi Tracker") setTab("Overview");
       return;
     }
     fetch("/api/user-tracker")
       .then((r) => r.json())
-      .then((d) => setMyTickers(d.tickers || []))
-      .catch(() => setMyTickers([]));
+      .then((d) => setMyGroups(d.groups || []))
+      .catch(() => setMyGroups([]));
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tabs = user ? [...TABS, "Mi Tracker"] : TABS;
@@ -151,7 +151,7 @@ export default function Home() {
       )}
 
       {!loading && tab === "Mi Tracker" && user && (
-        <MyTracker quotes={quotes} myTickers={myTickers} setMyTickers={setMyTickers} />
+        <MyTracker quotes={quotes} myGroups={myGroups} setMyGroups={setMyGroups} />
       )}
 
       {!loading && tab === "Watchlist" && (

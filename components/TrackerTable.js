@@ -100,8 +100,10 @@ export default function TrackerTable({ quotes }) {
               </tr>
               {openSections.includes(sectionName) &&
                 sortItems(items).map((item, i) => {
+                  // % respecto al máximo de 52 semanas: negativo cuando el precio
+                  // está por debajo del máximo, 0 cuando lo iguala.
                   const pct52 = item.yearHigh && item.price
-                    ? ((item.price / item.yearHigh - 1) * 100).toFixed(1)
+                    ? (((item.price - item.yearHigh) / item.yearHigh) * 100).toFixed(1)
                     : null;
                   return (
                     <tr
