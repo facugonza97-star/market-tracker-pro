@@ -53,19 +53,24 @@ export async function GET(req) {
   const tickers = [...new Set(raw.split(",").map((t) => t.trim()).filter(Boolean))];
   if (!tickers.length) return NextResponse.json({ rows: [] });
 
+  // FMP stock-price-change only supports US tickers — filter out international ones
+  const fmpTickers = tickers.filter((t) => !/\.[A-Z]{1,3}$/.test(t));
+
   // Fetch FMP data — failures are isolated so one bad ticker can't kill the rest
   const [quotes, priceChanges] = await Promise.allSettled([
-    fetchQuotes(tickers),
-    fetchStockPriceChange(tickers),
+    fetchQuotes(fmpTickers),
+    fetchStockPriceChange(fmpTickers),
   ]);
 
   const quoteMap = {};
-  for (const q of (quotes.value ?? [])) {
+  const quotesArr = quotes.status === "fulfilled" ? (quotes.value ?? []) : [];
+  for (const q of quotesArr) {
     if (q?.symbol) quoteMap[q.symbol] = q;
   }
 
   const changeMap = {};
-  for (const pc of (priceChanges.value ?? [])) {
+  const changesArr = priceChanges.status === "fulfilled" ? (priceChanges.value ?? []) : [];
+  for (const pc of changesArr) {
     if (pc?.symbol) changeMap[pc.symbol] = pc;
   }
 
