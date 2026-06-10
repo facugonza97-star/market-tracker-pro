@@ -1,37 +1,22 @@
 import { NextResponse } from "next/server";
 import { fetchQuotes, fetchStockPriceChange } from "@/lib/fmp";
+import yahooFinance from "yahoo-finance2";
 
 export const dynamic = "force-dynamic";
 
-const TWELVE_DATA_API_KEY = process.env.TWELVE_DATA_API_KEY;
-
-function toTwelveDataSymbol(ticker) {
-  if (ticker.endsWith(".L"))  return ticker.replace(".L", "") + ":LSE";
-  if (ticker.endsWith(".DE")) return ticker.replace(".DE", "") + ":XETRA";
-  if (ticker.endsWith(".PA")) return ticker.replace(".PA", "") + ":EPA";
-  if (ticker.endsWith(".MC")) return ticker.replace(".MC", "") + ":BME";
-  if (ticker.endsWith(".MI")) return ticker.replace(".MI", "") + ":MIL";
-  return ticker;
-}
-
-async function fetchTwelveDataQuote(ticker) {
+async function fetchYahooQuote(ticker) {
   try {
-    const symbol = toTwelveDataSymbol(ticker);
-    const res = await fetch(
-      `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(symbol)}&apikey=${TWELVE_DATA_API_KEY}`
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data.status === "error" || !data.close) return null;
+    const result = await yahooFinance.quote(ticker);
+    if (!result?.regularMarketPrice) return null;
     return {
-      name: data.name ?? ticker,
       ticker,
-      price: parseFloat(data.close) || null,
-      yearHigh: parseFloat(data.fifty_two_week?.high) || null,
-      yearLow: parseFloat(data.fifty_two_week?.low) || null,
-      change: parseFloat(data.change) || null,
-      changesPercentage: parseFloat(data.percent_change) || null,
-      d1: parseFloat(data.percent_change) || null,
+      name: result.longName || result.shortName || ticker,
+      price: result.regularMarketPrice,
+      yearHigh: result.fiftyTwoWeekHigh ?? null,
+      yearLow: result.fiftyTwoWeekLow ?? null,
+      change: result.regularMarketChange ?? null,
+      changesPercentage: result.regularMarketChangePercent ?? null,
+      d1: result.regularMarketChangePercent ?? null,
       w1: null,
       m1: null,
       ytd: null,
@@ -65,22 +50,22 @@ export async function GET(req) {
       if (pc?.symbol) changeMap[pc.symbol] = pc;
     }
 
-    // Identify tickers with no price from FMP — fall back to Twelve Data
+    // Identify tickers with no price from FMP — fall back to Yahoo Finance
     const missingTickers = tickers.filter((t) => !quoteMap[t]?.price);
 
-    const twelveDataResults = await Promise.all(
-      missingTickers.map((t) => fetchTwelveDataQuote(t))
+    const yahooResults = await Promise.all(
+      missingTickers.map((t) => fetchYahooQuote(t))
     );
 
-    const twelveDataMap = {};
+    const yahooMap = {};
     for (let i = 0; i < missingTickers.length; i++) {
-      if (twelveDataResults[i]) twelveDataMap[missingTickers[i]] = twelveDataResults[i];
+      if (yahooResults[i]) yahooMap[missingTickers[i]] = yahooResults[i];
     }
 
     const rows = tickers
       .map((ticker) => {
-        // Twelve Data fallback
-        if (twelveDataMap[ticker]) return twelveDataMap[ticker];
+        // Yahoo Finance fallback
+        if (yahooMap[ticker]) return yahooMap[ticker];
 
         const q = quoteMap[ticker];
         const pc = changeMap[ticker] || {};
