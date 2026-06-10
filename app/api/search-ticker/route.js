@@ -10,7 +10,7 @@ export async function GET(req) {
 
   try {
     const res = await fetch(
-      `https://financialmodelingprep.com/api/v3/search?query=${encodeURIComponent(q)}&limit=10&apikey=${API_KEY}`,
+      `https://financialmodelingprep.com/stable/search-symbol?query=${encodeURIComponent(q)}&limit=10&apikey=${API_KEY}`,
       { next: { revalidate: 300 } }
     );
     if (!res.ok) return NextResponse.json([]);
