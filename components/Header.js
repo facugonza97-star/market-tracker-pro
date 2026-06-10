@@ -1,6 +1,6 @@
 "use client";
 
-export default function Header({ tab, setTab, tabs, lastUpdate }) {
+export default function Header({ tab, setTab, tabs, lastUpdate, authSlot }) {
   return (
     <header className="h-12 bg-surface border-b border-border flex items-center px-6 justify-between sticky top-0 z-50">
       <div className="flex items-center gap-5">
@@ -22,11 +22,14 @@ export default function Header({ tab, setTab, tabs, lastUpdate }) {
           ))}
         </nav>
       </div>
-      <div className="text-[11px] text-text-dim font-mono flex items-center gap-2">
-        <span className="text-pos text-[6px]">●</span>
-        {lastUpdate
-          ? `Updated ${lastUpdate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`
-          : "Connecting..."}
+      <div className="flex items-center gap-4">
+        <div className="text-[11px] text-text-dim font-mono flex items-center gap-2">
+          <span className="text-pos text-[6px]">●</span>
+          {lastUpdate
+            ? `Updated ${lastUpdate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`
+            : "Connecting..."}
+        </div>
+        {authSlot}
       </div>
     </header>
   );

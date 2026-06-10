@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useUser, SignInButton, UserButton } from "@clerk/nextjs";
 import TrackerTable from "@/components/TrackerTable";
+import MyTracker from "@/components/MyTracker";
 import SummaryCards from "@/components/SummaryCards";
 import ForexStrip from "@/components/ForexStrip";
 import YieldCurve from "@/components/YieldCurve";
@@ -14,7 +16,9 @@ import Header from "@/components/Header";
 const TABS = ["Overview", "Tracker", "Bonos", "Forex", "Burbujas", "Watchlist"];
 
 export default function Home() {
+  const { user } = useUser();
   const [tab, setTab] = useState("Overview");
+  const [myTickers, setMyTickers] = useState(null);
   const [quotes, setQuotes] = useState(null);
   const [treasury, setTreasury] = useState(null);
   const [news, setNews] = useState(null);
@@ -79,9 +83,34 @@ export default function Home() {
     };
   }, [fetchAll]);
 
+  // Cargar el tracker del usuario cuando se loguea
+  useEffect(() => {
+    if (!user) {
+      setMyTickers(null);
+      if (tab === "Mi Tracker") setTab("Overview");
+      return;
+    }
+    fetch("/api/user-tracker")
+      .then((r) => r.json())
+      .then((d) => setMyTickers(d.tickers || []))
+      .catch(() => setMyTickers([]));
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const tabs = user ? [...TABS, "Mi Tracker"] : TABS;
+
+  const authSlot = user ? (
+    <UserButton afterSignOutUrl="/" />
+  ) : (
+    <SignInButton mode="modal">
+      <button className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 border border-white/30 text-white hover:bg-white/20 transition">
+        Iniciar sesión
+      </button>
+    </SignInButton>
+  );
+
   return (
     <div className="min-h-screen bg-bg">
-      <Header tab={tab} setTab={setTab} tabs={TABS} lastUpdate={lastUpdate} />
+      <Header tab={tab} setTab={setTab} tabs={tabs} lastUpdate={lastUpdate} authSlot={authSlot} />
 
       {loading && (
         <div className="flex items-center justify-center h-64">
@@ -119,6 +148,10 @@ export default function Home() {
 
       {!loading && tab === "Burbujas" && (
         <BubbleChart sections={quotes?.sections} />
+      )}
+
+      {!loading && tab === "Mi Tracker" && user && (
+        <MyTracker quotes={quotes} myTickers={myTickers} setMyTickers={setMyTickers} />
       )}
 
       {!loading && tab === "Watchlist" && (
