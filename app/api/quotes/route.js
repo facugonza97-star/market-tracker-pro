@@ -37,13 +37,13 @@ export async function GET() {
 
     // Build lookup maps
     const quoteMap = {};
-    for (const q of quotes) {
-      quoteMap[q.symbol] = q;
+    for (const q of (quotes ?? [])) {
+      if (q?.symbol) quoteMap[q.symbol] = q;
     }
 
     const changeMap = {};
-    for (const pc of priceChanges) {
-      changeMap[pc.symbol] = pc;
+    for (const pc of (priceChanges ?? [])) {
+      if (pc?.symbol) changeMap[pc.symbol] = pc;
     }
 
     // Build response organized by section
@@ -59,8 +59,8 @@ export async function GET() {
           yearHigh: q.yearHigh ?? null,
           yearLow: q.yearLow ?? null,
           change: q.change ?? null,
-          changesPercentage: q.changePercentage ?? null,
-          d1: pc["1D"] ?? q.changePercentage ?? null,
+          changesPercentage: q.changesPercentage ?? null,
+          d1: pc["1D"] ?? q.changesPercentage ?? null,
           w1: pc["5D"] ?? null,
           m1: pc["1M"] ?? null,
           ytd: pc["ytd"] ?? null,
@@ -79,7 +79,7 @@ export async function GET() {
       summaryQuotes[t] = {
         price: q.price ?? null,
         yearHigh: q.yearHigh ?? null,
-        d1: pc["1D"] ?? q.changePercentage ?? null,
+        d1: pc["1D"] ?? q.changesPercentage ?? null,
       };
     }
 
