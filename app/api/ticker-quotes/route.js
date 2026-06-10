@@ -5,10 +5,20 @@ export const dynamic = "force-dynamic";
 
 const TWELVE_DATA_API_KEY = process.env.TWELVE_DATA_API_KEY;
 
+function toTwelveDataSymbol(ticker) {
+  if (ticker.endsWith(".L"))  return ticker.replace(".L", "") + ":LSE";
+  if (ticker.endsWith(".DE")) return ticker.replace(".DE", "") + ":XETRA";
+  if (ticker.endsWith(".PA")) return ticker.replace(".PA", "") + ":EPA";
+  if (ticker.endsWith(".MC")) return ticker.replace(".MC", "") + ":BME";
+  if (ticker.endsWith(".MI")) return ticker.replace(".MI", "") + ":MIL";
+  return ticker;
+}
+
 async function fetchTwelveDataQuote(ticker) {
   try {
+    const symbol = toTwelveDataSymbol(ticker);
     const res = await fetch(
-      `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(ticker)}&apikey=${TWELVE_DATA_API_KEY}`
+      `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(symbol)}&apikey=${TWELVE_DATA_API_KEY}`
     );
     if (!res.ok) return null;
     const data = await res.json();
