@@ -8,9 +8,10 @@ import NewsPanel from "@/components/NewsPanel";
 import LRMPanel from "@/components/LRMPanel";
 import EconCalendar from "@/components/EconCalendar";
 import BondPanel from "@/components/BondPanel";
+import BubbleChart from "@/components/BubbleChart";
 import Header from "@/components/Header";
 
-const TABS = ["Overview", "Tracker", "Bonos", "Forex", "Watchlist"];
+const TABS = ["Overview", "Tracker", "Bonos", "Forex", "Burbujas", "Watchlist"];
 
 export default function Home() {
   const [tab, setTab] = useState("Overview");
@@ -114,6 +115,10 @@ export default function Home() {
         <div className="px-6 py-5">
           <ForexStrip forex={forex} full />
         </div>
+      )}
+
+      {!loading && tab === "Burbujas" && (
+        <BubbleChart sections={quotes?.sections} />
       )}
 
       {!loading && tab === "Watchlist" && (
