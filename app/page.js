@@ -13,7 +13,7 @@ import BondPanel from "@/components/BondPanel";
 import BubbleChart from "@/components/BubbleChart";
 import Header from "@/components/Header";
 
-const TABS = ["Overview", "Tracker", "Bonos", "Forex", "Burbujas", "Watchlist"];
+const TABS = ["Overview", "Tracker", "Bonos", "Forex", "Burbujas"];
 
 export default function Home() {
   const { user } = useUser();
@@ -152,12 +152,6 @@ export default function Home() {
 
       {!loading && tab === "Mi Tracker" && user && (
         <MyTracker quotes={quotes} myGroups={myGroups} setMyGroups={setMyGroups} />
-      )}
-
-      {!loading && tab === "Watchlist" && (
-        <div className="flex items-center justify-center h-80">
-          <div className="text-3xl font-bold text-white">🚧 En construcción</div>
-        </div>
       )}
 
       {/* Footer */}
