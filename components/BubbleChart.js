@@ -6,8 +6,8 @@ const H = 520;
 const PERIODS = ["d1","w1","m1","ytd","y1","y3","y5"];
 const PERIOD_LABELS = { d1:"1D", w1:"1S", m1:"1M", ytd:"YTD", y1:"1A", y3:"3A", y5:"5A" };
 
-// Side launcher — left edge, mid height
-const LAUNCH_X = 34;
+// Side launcher — right edge, mid height
+const launchX = (W) => W - 20;
 const LAUNCH_Y = H / 2;
 
 function getColor(val) {
@@ -110,8 +110,9 @@ function drawProjectile(ctx, proj) {
   ctx.restore();
 }
 
-function drawAimAndCannon(ctx, mx, my) {
-  const dir = Math.atan2(my - LAUNCH_Y, mx - LAUNCH_X);
+function drawAimAndCannon(ctx, mx, my, W) {
+  const LX = launchX(W);
+  const dir = Math.atan2(my - LAUNCH_Y, mx - LX);
 
   // Aim line from launcher to cursor
   ctx.save();
@@ -119,7 +120,7 @@ function drawAimAndCannon(ctx, mx, my) {
   ctx.lineWidth = 1;
   ctx.setLineDash([6, 6]);
   ctx.beginPath();
-  ctx.moveTo(LAUNCH_X, LAUNCH_Y);
+  ctx.moveTo(LX, LAUNCH_Y);
   ctx.lineTo(mx, my);
   ctx.stroke();
   ctx.restore();
@@ -137,9 +138,9 @@ function drawAimAndCannon(ctx, mx, my) {
   ctx.fill();
   ctx.restore();
 
-  // Cannon — dark rotating barrel anchored on the left edge
+  // Cannon — dark rotating barrel anchored on the right edge
   ctx.save();
-  ctx.translate(LAUNCH_X, LAUNCH_Y);
+  ctx.translate(LX, LAUNCH_Y);
   ctx.rotate(dir);
   // Barrel
   ctx.fillStyle = "#1a1a2e";
@@ -160,7 +161,7 @@ function drawAimAndCannon(ctx, mx, my) {
   // Cannon base/hub
   ctx.save();
   ctx.beginPath();
-  ctx.arc(LAUNCH_X, LAUNCH_Y, 12, 0, Math.PI * 2);
+  ctx.arc(LX, LAUNCH_Y, 12, 0, Math.PI * 2);
   ctx.fillStyle = "#1a1a2e";
   ctx.fill();
   ctx.strokeStyle = "#16c784";
@@ -224,7 +225,7 @@ export default function BubbleChart({ sections }) {
           if (a.exploded || b.exploded) continue;
           const dx = b.x - a.x, dy = b.y - a.y;
           const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          const minD = a.r + b.r + 2;
+          const minD = a.r + b.r + 12;
           if (dist < minD) {
             const overlap = (minD - dist) / 2;
             const nx = dx / dist, ny = dy / dist;
@@ -360,7 +361,7 @@ export default function BubbleChart({ sections }) {
         });
 
         // Aim line + rotating cannon
-        drawAimAndCannon(ctx, mouseRef.current.x, mouseRef.current.y);
+        drawAimAndCannon(ctx, mouseRef.current.x, mouseRef.current.y, W);
       }
 
       animRef.current = requestAnimationFrame(render);
@@ -406,9 +407,12 @@ export default function BubbleChart({ sections }) {
     }));
 
     const nodes = nodesRef.current;
+    // When the game is active, herd bubbles into the left half so the right side stays clear for the cannon
+    const targetX = gameModeRef.current ? W * 0.35 : W / 2;
     simRef.current = d3.forceSimulation(nodes)
-      .force("collision", d3.forceCollide(d => d.r + 3).iterations(4))
-      .force("x", d3.forceX(W / 2).strength(0.04))
+      .force("collision", d3.forceCollide(d => d.r + 12).iterations(6).strength(1))
+      .force("charge", d3.forceManyBody().strength(-30))
+      .force("x", d3.forceX(targetX).strength(gameModeRef.current ? 0.08 : 0.04))
       .force("y", d3.forceY(H / 2).strength(0.04))
       .alphaDecay(0.04).velocityDecay(0.4);
 
@@ -448,15 +452,16 @@ export default function BubbleChart({ sections }) {
 
     if (gameModeRef.current) {
       if (ammoRef.current <= 0) return;
-      const dx = mx - LAUNCH_X, dy = my - LAUNCH_Y;
+      const LX = launchX(canvas.width);
+      const dx = mx - LX, dy = my - LAUNCH_Y;
       const dist = Math.sqrt(dx * dx + dy * dy) || 1;
       const ux = dx / dist, uy = dy / dist;
-      // High horizontal launch speed; light curve nudges it toward where the user aimed
+      // High leftward launch speed; light curve nudges it toward where the user aimed
       ammoRef.current -= 1;
       setAmmo(ammoRef.current);
       projectilesRef.current.push({
-        x: LAUNCH_X + 24, y: LAUNCH_Y,
-        vx: 16 * Math.max(ux, 0.55),
+        x: LX - 24, y: LAUNCH_Y,
+        vx: 16 * Math.min(ux, -0.55),
         vy: uy * 6,
         curveX: ux * 0.12,
         curveY: uy * 0.12,
@@ -500,6 +505,15 @@ export default function BubbleChart({ sections }) {
       particlesRef.current = [];
       popupsRef.current = [];
       nodesRef.current.forEach(n => { n.exploded = false; });
+    }
+    // Re-target the herding force: left half during the game, centered otherwise
+    const canvas = canvasRef.current;
+    if (canvas && simRef.current) {
+      const W = canvas.width || canvas.offsetWidth || 680;
+      const targetX = next ? W * 0.35 : W / 2;
+      simRef.current
+        .force("x", d3.forceX(targetX).strength(next ? 0.08 : 0.04))
+        .alpha(0.6).restart();
     }
   }, []);
 
