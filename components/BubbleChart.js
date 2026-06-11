@@ -6,6 +6,10 @@ const H = 520;
 const PERIODS = ["d1","w1","m1","ytd","y1","y3","y5"];
 const PERIOD_LABELS = { d1:"1D", w1:"1S", m1:"1M", ytd:"YTD", y1:"1A", y3:"3A", y5:"5A" };
 
+// Side launcher — left edge, mid height
+const LAUNCH_X = 34;
+const LAUNCH_Y = H / 2;
+
 function getColor(val) {
   if (val > 0) return { center: "#1a5c35", edge: "#0a2018", stroke: "#16c784", text: "#16c784" };
   if (val < 0) return { center: "#5c1a1a", edge: "#200a0a", stroke: "#ea3943", text: "#ea3943" };
@@ -64,72 +68,104 @@ function drawBubble(ctx, node) {
   ctx.restore();
 }
 
-function drawCandlestick(ctx, proj) {
-  const { x, y, angle } = proj;
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(angle - Math.PI / 2);
-
-  const bW = 5, bH = 14, wH = 7;
-
-  // Upper wick
+// Mini candle used both for the projectile and for explosion debris
+function drawCandle(ctx, bW, bH, wH) {
+  // Wicks
   ctx.strokeStyle = "#16c784";
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = Math.max(1.5, bW * 0.18);
   ctx.lineCap = "round";
   ctx.beginPath();
   ctx.moveTo(0, -bH / 2 - wH);
   ctx.lineTo(0, -bH / 2);
-  ctx.stroke();
-
-  // Lower wick
-  ctx.beginPath();
   ctx.moveTo(0, bH / 2);
   ctx.lineTo(0, bH / 2 + wH);
   ctx.stroke();
 
-  // Body
-  ctx.fillStyle = "#16c784";
+  // Body — bright green gradient
+  const grad = ctx.createLinearGradient(-bW / 2, 0, bW / 2, 0);
+  grad.addColorStop(0, "#3ff2a0");
+  grad.addColorStop(0.5, "#16c784");
+  grad.addColorStop(1, "#0a8f5a");
+  ctx.fillStyle = grad;
   ctx.strokeStyle = "#0a4a28";
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.rect(-bW / 2, -bH / 2, bW, bH);
   ctx.fill();
   ctx.stroke();
+}
 
+function drawProjectile(ctx, proj) {
+  ctx.save();
+  ctx.translate(proj.x, proj.y);
+  // Rotate to point in direction of travel (body's long axis aligns with motion)
+  const dir = Math.atan2(proj.vy, proj.vx);
+  ctx.rotate(dir + Math.PI / 2);
+
+  // Glow
+  ctx.shadowColor = "#16c784";
+  ctx.shadowBlur = 14;
+  // Body 14w x 40h, wicks 12px
+  drawCandle(ctx, 14, 40, 12);
   ctx.restore();
 }
 
-function drawCrosshair(ctx, mx, my, W) {
-  const originX = W / 2, originY = H;
+function drawAimAndCannon(ctx, mx, my) {
+  const dir = Math.atan2(my - LAUNCH_Y, mx - LAUNCH_X);
+
+  // Aim line from launcher to cursor
   ctx.save();
-  ctx.strokeStyle = "rgba(255,255,255,0.3)";
+  ctx.strokeStyle = "rgba(22,199,132,0.35)";
   ctx.lineWidth = 1;
-  ctx.setLineDash([5, 5]);
+  ctx.setLineDash([6, 6]);
   ctx.beginPath();
-  ctx.moveTo(originX, originY);
+  ctx.moveTo(LAUNCH_X, LAUNCH_Y);
   ctx.lineTo(mx, my);
   ctx.stroke();
+  ctx.restore();
 
-  ctx.setLineDash([]);
+  // Reticle at cursor
+  ctx.save();
   ctx.beginPath();
   ctx.arc(mx, my, 12, 0, Math.PI * 2);
   ctx.strokeStyle = "rgba(255,255,255,0.45)";
   ctx.lineWidth = 1;
   ctx.stroke();
-
-  // Inner dot
   ctx.beginPath();
   ctx.arc(mx, my, 2.5, 0, Math.PI * 2);
   ctx.fillStyle = "rgba(255,255,255,0.75)";
   ctx.fill();
+  ctx.restore();
 
-  // Origin indicator
+  // Cannon — dark rotating barrel anchored on the left edge
+  ctx.save();
+  ctx.translate(LAUNCH_X, LAUNCH_Y);
+  ctx.rotate(dir);
+  // Barrel
+  ctx.fillStyle = "#1a1a2e";
+  ctx.strokeStyle = "#16c784";
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.arc(originX, originY - 4, 5, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(22,199,132,0.6)";
+  ctx.rect(-6, -9, 34, 18);
+  ctx.fill();
+  ctx.stroke();
+  // Muzzle ring
+  ctx.beginPath();
+  ctx.arc(28, 0, 4, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(22,199,132,0.7)";
   ctx.lineWidth = 1.5;
   ctx.stroke();
+  ctx.restore();
 
+  // Cannon base/hub
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(LAUNCH_X, LAUNCH_Y, 12, 0, Math.PI * 2);
+  ctx.fillStyle = "#1a1a2e";
+  ctx.fill();
+  ctx.strokeStyle = "#16c784";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -216,10 +252,32 @@ export default function BubbleChart({ sections }) {
       // Game mode
       if (gameModeRef.current) {
         // Move & draw projectiles, check collisions
-        const hitIndices = new Set();
         projectilesRef.current = projectilesRef.current.filter(p => {
+          // Cannon-ball physics: high horizontal speed, light gravity, slight curve toward aim
+          p.vy += 0.15;
+          p.vx += p.curveX;
+          p.vy += p.curveY;
+          p.curveX *= 0.94;
+          p.curveY *= 0.94;
           p.x += p.vx;
           p.y += p.vy;
+
+          // Trail (12 fading points)
+          p.trail.push({ x: p.x, y: p.y });
+          if (p.trail.length > 12) p.trail.shift();
+
+          // Draw trail
+          for (let ti = 0; ti < p.trail.length; ti++) {
+            const tp = p.trail[ti];
+            const a = (ti / p.trail.length) * 0.6;
+            ctx.save();
+            ctx.globalAlpha = a;
+            ctx.fillStyle = "#16c784";
+            ctx.beginPath();
+            ctx.arc(tp.x, tp.y, 2 + (ti / p.trail.length) * 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
 
           // Collision
           for (const n of nodes) {
@@ -229,15 +287,18 @@ export default function BubbleChart({ sections }) {
               n.exploded = true;
               const c = getColor(n.val);
               const pts = Math.round(Math.abs(n.val) * 10) + 5;
-              // Particles
-              for (let k = 0; k < 20; k++) {
-                const a = (k / 20) * Math.PI * 2;
-                const spd = 2.5 + Math.random() * 4;
+              // 30 particles, some are mini candles
+              for (let k = 0; k < 30; k++) {
+                const a = (k / 30) * Math.PI * 2 + Math.random() * 0.3;
+                const spd = 3 + Math.random() * 6;
                 particlesRef.current.push({
                   x: n.x, y: n.y,
                   vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
                   color: c.stroke, life: 1.0,
-                  r: 2 + Math.random() * 3,
+                  r: 2 + Math.random() * 4,
+                  candle: k % 4 === 0,
+                  rot: Math.random() * Math.PI * 2,
+                  vrot: (Math.random() - 0.5) * 0.4,
                 });
               }
               // Score popup
@@ -253,24 +314,32 @@ export default function BubbleChart({ sections }) {
             }
           }
 
-          if (p.x < -20 || p.x > W + 20 || p.y < -20 || p.y > H + 20) return false;
-          drawCandlestick(ctx, p);
+          if (p.x < -40 || p.x > W + 40 || p.y < -40 || p.y > H + 40) return false;
+          drawProjectile(ctx, p);
           return true;
         });
 
         // Particles
         particlesRef.current = particlesRef.current.filter(p => {
           p.x += p.vx; p.y += p.vy;
-          p.vy += 0.12;
+          p.vy += 0.14;
           p.vx *= 0.96;
-          p.life -= 0.022;
+          p.rot += p.vrot;
+          p.life -= 0.02;
           if (p.life <= 0) return false;
           ctx.save();
           ctx.globalAlpha = p.life;
-          ctx.fillStyle = p.color;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
-          ctx.fill();
+          if (p.candle) {
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-2, -5 * p.life, 4, 10 * p.life);
+          } else {
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+            ctx.fill();
+          }
           ctx.restore();
           return true;
         });
@@ -290,8 +359,8 @@ export default function BubbleChart({ sections }) {
           return true;
         });
 
-        // Crosshair
-        drawCrosshair(ctx, mouseRef.current.x, mouseRef.current.y, W);
+        // Aim line + rotating cannon
+        drawAimAndCannon(ctx, mouseRef.current.x, mouseRef.current.y);
       }
 
       animRef.current = requestAnimationFrame(render);
@@ -379,18 +448,19 @@ export default function BubbleChart({ sections }) {
 
     if (gameModeRef.current) {
       if (ammoRef.current <= 0) return;
-      const W = canvas.width;
-      const originX = W / 2, originY = H;
-      const dx = mx - originX, dy = my - originY;
+      const dx = mx - LAUNCH_X, dy = my - LAUNCH_Y;
       const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-      const speed = 14;
+      const ux = dx / dist, uy = dy / dist;
+      // High horizontal launch speed; light curve nudges it toward where the user aimed
       ammoRef.current -= 1;
       setAmmo(ammoRef.current);
       projectilesRef.current.push({
-        x: originX, y: originY - 4,
-        vx: (dx / dist) * speed,
-        vy: (dy / dist) * speed,
-        angle: Math.atan2(dy, dx),
+        x: LAUNCH_X + 24, y: LAUNCH_Y,
+        vx: 16 * Math.max(ux, 0.55),
+        vy: uy * 6,
+        curveX: ux * 0.12,
+        curveY: uy * 0.12,
+        trail: [],
       });
       return;
     }
