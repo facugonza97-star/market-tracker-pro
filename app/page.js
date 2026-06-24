@@ -12,6 +12,7 @@ import EconCalendar from "@/components/EconCalendar";
 import BondPanel from "@/components/BondPanel";
 import BubbleChart from "@/components/BubbleChart";
 import PongGame from "@/components/PongGame";
+import PongPVP from "@/components/PongPVP";
 import Header from "@/components/Header";
 
 const TABS = ["Overview", "Tracker", "Bonos", "Forex", "Burbujas"];
@@ -154,6 +155,7 @@ export default function Home() {
             {[
               { id: "bubbles", label: "Burbujas" },
               { id: "pong", label: "Pong" },
+              { id: "pvp", label: "PvP" },
             ].map((v) => (
               <button
                 key={v.id}
@@ -170,8 +172,10 @@ export default function Home() {
           </div>
           {bubblesView === "bubbles" ? (
             <BubbleChart sections={quotes?.sections} />
-          ) : (
+          ) : bubblesView === "pong" ? (
             <PongGame />
+          ) : (
+            <PongPVP />
           )}
         </>
       )}
