@@ -1,113 +1,174 @@
 "use client";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useCallback } from "react";
 
-// --- Resolución lógica del canvas (se escala por CSS al 100% del contenedor) ---
-const VW = 800;
-const VH = 520;
-
-// --- Medidas de juego ---
-const PADDLE_W = 10;
-const PADDLE_H = 70;
-const BALL = 10;
-const PLAYER_X = 24;                       // paleta izquierda (jugador)
-const CPU_X = VW - 24 - PADDLE_W;          // paleta derecha (CPU)
-const CPU_MAX = 4;                         // velocidad máxima CPU (px/frame) — vencible
-const POINTS_PER_SET = 10;                 // puntos para ganar un set
-const SETS_TO_WIN = 2;                     // sets para ganar el partido
-const BASE_SPEED = 4.6;                    // velocidad base de la pelota
-const MAX_MULT = 2;                        // acelera hasta 2x
-const MULT_STEP = 0.08;                    // incremento por rebote en paleta
-const COUNTDOWN_STEP = 650;                // ms por número del countdown
+// --- Reglas (valores de referencia a 420px de alto; se escalan por dimensión) ---
+const REF_H = 420;          // alto de referencia (desktop)
+const POINTS_PER_SET = 10;  // puntos para ganar un set
+const SETS_TO_WIN = 2;      // sets para ganar el partido
+const MAX_MULT = 2;         // la pelota acelera hasta 2x
+const MULT_STEP = 0.08;     // incremento por rebote en paleta
+const COUNTDOWN_STEP = 650; // ms por número del countdown (3 · 2 · 1)
+const SETOVER_MS = 1500;    // overlay fin de set
+const MATCHOVER_MS = 3000;  // overlay fin de partido
+const FLASH_MS = 300;       // flash blanco al marcar
+const TRAIL_LEN = 5;        // frames de estela
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 function freshMatch() {
   return {
-    ball: { x: VW / 2 - BALL / 2, y: VH / 2 - BALL / 2, vx: 0, vy: 0 },
-    playerY: VH / 2 - PADDLE_H / 2,
-    cpuY: VH / 2 - PADDLE_H / 2,
+    ball: { x: 0, y: 0, vx: 0, vy: 0 },
+    playerY: 0,
+    cpuY: 0,
     pScore: 0,
     cScore: 0,
     pSets: 0,
     cSets: 0,
     mult: 1,
-    phase: "countdown",       // countdown | playing | setover | matchover
+    phase: "countdown",      // countdown | playing | setover | matchover
     serveDir: Math.random() < 0.5 ? -1 : 1,
-    countdownStart: 0,        // se fija en el primer frame del countdown
+    countdownStart: 0,
     setOverStart: 0,
+    matchOverStart: 0,
+    flashStart: 0,
+    setNumber: 0,            // nº de set recién terminado
     setWinner: null,
     matchWinner: null,
+    trail: [],
+    placed: false,          // ¿ya centramos paletas/pelota con dims reales?
   };
 }
 
 export default function PongGame() {
+  const wrapRef = useRef(null);
   const canvasRef = useRef(null);
   const rafRef = useRef(null);
   const stateRef = useRef(freshMatch());
-  const mouseRef = useRef({ y: VH / 2 });
+  const pointerRef = useRef({ y: REF_H / 2 });
+  // Dimensiones lógicas actuales del canvas (ancho real del contenedor, alto fijo).
+  const dimsRef = useRef({ w: 800, h: REF_H, dpr: 1 });
 
-  // Espejo en React de la fase, solo para mostrar overlays HTML (set / final).
-  const [uiPhase, setUiPhase] = useState("countdown");
-  const [, force] = useState(0); // fuerza re-render de los overlays al cambiar marcador
-
-  const syncPhase = useCallback((p) => {
-    setUiPhase((prev) => (prev === p ? prev : p));
-    force((n) => n + 1);
+  // Geometría derivada de las dimensiones actuales (todo escala con el alto).
+  const geom = useCallback(() => {
+    const { w, h } = dimsRef.current;
+    const scale = h / REF_H;
+    const pw = 10 * scale;
+    const ph = 70 * scale;
+    const ball = 10 * scale;
+    const edge = 24 * scale;
+    return {
+      w, h, scale, pw, ph, ball, edge,
+      playerX: edge,
+      cpuX: w - edge - pw,
+      cpuMax: 4 * scale,
+      baseSpeed: 4.6 * scale,
+    };
   }, []);
 
-  // Arranca un saque con countdown (centro + dirección dada).
-  const startCountdown = useCallback((s, dir, now) => {
-    s.ball.x = VW / 2 - BALL / 2;
-    s.ball.y = VH / 2 - BALL / 2;
+  const centerServe = useCallback((s, dir, now) => {
+    const g = geom();
+    s.ball.x = g.w / 2 - g.ball / 2;
+    s.ball.y = g.h / 2 - g.ball / 2;
     s.ball.vx = 0;
     s.ball.vy = 0;
     s.mult = 1;
+    s.trail = [];
     s.serveDir = dir;
     s.phase = "countdown";
     s.countdownStart = now || 0;
-    syncPhase("countdown");
-  }, [syncPhase]);
+  }, [geom]);
 
-  // Rebote en paleta: acelera (cap 2x) y desvía según el punto de impacto.
+  // Rebote en paleta: acelera (cap 2x) y desvía según el punto de impacto
+  // (extremos = diagonal fuerte, centro = casi recto).
   const bounce = useCallback((s, who) => {
+    const g = geom();
     s.mult = Math.min(MAX_MULT, s.mult + MULT_STEP);
-    const speed = BASE_SPEED * s.mult;
+    const speed = g.baseSpeed * s.mult;
     const paddleY = who === "player" ? s.playerY : s.cpuY;
-    const rel = ((s.ball.y + BALL / 2) - (paddleY + PADDLE_H / 2)) / (PADDLE_H / 2);
-    const angle = clamp(rel, -1, 1) * (Math.PI * 0.32); // hasta ~58°
+    const rel = clamp(((s.ball.y + g.ball / 2) - (paddleY + g.ph / 2)) / (g.ph / 2), -1, 1);
+    const angle = rel * (Math.PI * 0.36); // hasta ~65° en los extremos
     const dir = who === "player" ? 1 : -1;
     s.ball.vx = dir * speed * Math.cos(angle);
     s.ball.vy = speed * Math.sin(angle);
-  }, []);
+  }, [geom]);
 
-  // Se anotó un punto: actualiza marcador, resuelve set/partido o vuelve a sacar.
   const point = useCallback((s, who, now) => {
     if (who === "player") s.pScore++;
     else s.cScore++;
-    force((n) => n + 1);
+    s.flashStart = now;
 
     if (s.pScore >= POINTS_PER_SET || s.cScore >= POINTS_PER_SET) {
       const setWinner = s.pScore > s.cScore ? "player" : "cpu";
       s.setWinner = setWinner;
       if (setWinner === "player") s.pSets++;
       else s.cSets++;
+      s.setNumber = s.pSets + s.cSets;
 
       if (s.pSets >= SETS_TO_WIN || s.cSets >= SETS_TO_WIN) {
         s.matchWinner = s.pSets > s.cSets ? "player" : "cpu";
         s.phase = "matchover";
-        syncPhase("matchover");
+        s.matchOverStart = now;
       } else {
         s.phase = "setover";
         s.setOverStart = now;
-        syncPhase("setover");
       }
     } else {
       // Saca hacia quien recibió el punto en contra.
-      startCountdown(s, who === "player" ? 1 : -1, now);
+      centerServe(s, who === "player" ? 1 : -1, now);
     }
-  }, [startCountdown, syncPhase]);
+  }, [centerServe]);
 
-  // --- Loop principal ---
+  // --- Resize: recalcula ancho real y reescala posiciones proporcionalmente ---
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const wrap = wrapRef.current;
+    if (!canvas || !wrap) return;
+
+    const applyResize = () => {
+      const w = Math.max(320, wrap.clientWidth);
+      const h = window.innerWidth < 768 ? 280 : 420; // mobile / desktop
+      const dpr = window.devicePixelRatio || 1;
+      const old = dimsRef.current;
+      const s = stateRef.current;
+
+      if (s.placed && old.w && old.h) {
+        // Reescalar lo que ya está en pantalla para que no salte.
+        const rx = w / old.w, ry = h / old.h;
+        s.ball.x *= rx; s.ball.y *= ry;
+        s.ball.vx *= ry; s.ball.vy *= ry;
+        s.playerY *= ry; s.cpuY *= ry;
+        for (const t of s.trail) { t.x *= rx; t.y *= ry; }
+      }
+
+      dimsRef.current = { w, h, dpr };
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      canvas.style.height = h + "px";
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      if (!s.placed) {
+        const g = geom();
+        s.playerY = g.h / 2 - g.ph / 2;
+        s.cpuY = g.h / 2 - g.ph / 2;
+        s.ball.x = g.w / 2 - g.ball / 2;
+        s.ball.y = g.h / 2 - g.ball / 2;
+        pointerRef.current.y = g.h / 2;
+        s.placed = true;
+      }
+    };
+
+    applyResize();
+    const ro = new ResizeObserver(applyResize);
+    ro.observe(wrap);
+    window.addEventListener("resize", applyResize);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", applyResize);
+    };
+  }, [geom]);
+
+  // --- Loop principal (arranca solo con countdown al montar) ---
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -115,210 +176,238 @@ export default function PongGame() {
 
     function frame(now) {
       const s = stateRef.current;
+      const g = geom();
 
-      // La paleta del jugador siempre sigue el mouse (salvo partido terminado).
       if (s.phase !== "matchover") {
-        s.playerY = clamp(mouseRef.current.y - PADDLE_H / 2, 0, VH - PADDLE_H);
+        s.playerY = clamp(pointerRef.current.y - g.ph / 2, 0, g.h - g.ph);
       }
 
       if (s.phase === "countdown") {
         if (!s.countdownStart) s.countdownStart = now;
-        if (now - s.countdownStart >= COUNTDOWN_STEP * 4) {
+        if (now - s.countdownStart >= COUNTDOWN_STEP * 3) {
           const a = (Math.random() * 0.5 - 0.25) * Math.PI; // -45°..45°
-          s.ball.vx = s.serveDir * BASE_SPEED * Math.cos(a);
-          s.ball.vy = BASE_SPEED * Math.sin(a);
+          s.ball.vx = s.serveDir * g.baseSpeed * Math.cos(a);
+          s.ball.vy = g.baseSpeed * Math.sin(a);
           s.mult = 1;
+          s.trail = [];
           s.phase = "playing";
-          syncPhase("playing");
         }
       } else if (s.phase === "playing") {
         const b = s.ball;
         b.x += b.vx;
         b.y += b.vy;
 
-        // Paredes arriba/abajo
+        // Estela
+        s.trail.push({ x: b.x + g.ball / 2, y: b.y + g.ball / 2 });
+        if (s.trail.length > TRAIL_LEN) s.trail.shift();
+
+        // Paredes
         if (b.y <= 0) { b.y = 0; b.vy = Math.abs(b.vy); }
-        if (b.y + BALL >= VH) { b.y = VH - BALL; b.vy = -Math.abs(b.vy); }
+        if (b.y + g.ball >= g.h) { b.y = g.h - g.ball; b.vy = -Math.abs(b.vy); }
 
         // Paleta jugador (izquierda)
         if (b.vx < 0 &&
-            b.x <= PLAYER_X + PADDLE_W && b.x + BALL >= PLAYER_X &&
-            b.y + BALL >= s.playerY && b.y <= s.playerY + PADDLE_H) {
+            b.x <= g.playerX + g.pw && b.x + g.ball >= g.playerX &&
+            b.y + g.ball >= s.playerY && b.y <= s.playerY + g.ph) {
           bounce(s, "player");
-          b.x = PLAYER_X + PADDLE_W;
+          b.x = g.playerX + g.pw;
         }
         // Paleta CPU (derecha)
         if (b.vx > 0 &&
-            b.x + BALL >= CPU_X && b.x <= CPU_X + PADDLE_W &&
-            b.y + BALL >= s.cpuY && b.y <= s.cpuY + PADDLE_H) {
+            b.x + g.ball >= g.cpuX && b.x <= g.cpuX + g.pw &&
+            b.y + g.ball >= s.cpuY && b.y <= s.cpuY + g.ph) {
           bounce(s, "cpu");
-          b.x = CPU_X - BALL;
+          b.x = g.cpuX - g.ball;
         }
 
-        // IA de la CPU: persigue la pelota con tope de velocidad
-        const target = b.y + BALL / 2 - PADDLE_H / 2;
-        s.cpuY = clamp(s.cpuY + clamp(target - s.cpuY, -CPU_MAX, CPU_MAX), 0, VH - PADDLE_H);
+        // IA CPU: persigue con tope de velocidad (vencible)
+        const target = b.y + g.ball / 2 - g.ph / 2;
+        s.cpuY = clamp(s.cpuY + clamp(target - s.cpuY, -g.cpuMax, g.cpuMax), 0, g.h - g.ph);
 
         // Puntos
-        if (b.x + BALL < 0) point(s, "cpu", now);
-        else if (b.x > VW) point(s, "player", now);
+        if (b.x + g.ball < 0) point(s, "cpu", now);
+        else if (b.x > g.w) point(s, "player", now);
       } else if (s.phase === "setover") {
-        if (now - s.setOverStart >= 2000) {
+        if (now - s.setOverStart >= SETOVER_MS) {
           s.pScore = 0;
           s.cScore = 0;
-          force((n) => n + 1);
-          // El perdedor del set saca.
-          startCountdown(s, s.setWinner === "player" ? 1 : -1, now);
+          centerServe(s, s.setWinner === "player" ? 1 : -1, now); // saca el perdedor
+        }
+      } else if (s.phase === "matchover") {
+        if (now - s.matchOverStart >= MATCHOVER_MS) {
+          stateRef.current = freshMatch();
+          stateRef.current.placed = true;
+          const g2 = geom();
+          stateRef.current.playerY = g2.h / 2 - g2.ph / 2;
+          stateRef.current.cpuY = g2.h / 2 - g2.ph / 2;
+          centerServe(stateRef.current, stateRef.current.serveDir, now);
         }
       }
-      // matchover: queda en pausa hasta "Jugar de nuevo"
 
-      draw(ctx, s, now);
+      draw(ctx, s, now, geom());
       rafRef.current = requestAnimationFrame(frame);
     }
 
     rafRef.current = requestAnimationFrame(frame);
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [bounce, point, startCountdown, syncPhase]);
+  }, [geom, bounce, point, centerServe]);
 
   // --- Dibujo ---
-  function draw(ctx, s, now) {
+  function draw(ctx, s, now, g) {
+    const { w, h, scale, ball } = g;
+
     // Fondo arcade
     ctx.fillStyle = "#090912";
-    ctx.fillRect(0, 0, VW, VH);
+    ctx.fillRect(0, 0, w, h);
 
     // Línea punteada central
     ctx.save();
     ctx.strokeStyle = "rgba(255,255,255,0.18)";
-    ctx.lineWidth = 4;
-    ctx.setLineDash([14, 18]);
+    ctx.lineWidth = 4 * scale;
+    ctx.setLineDash([14 * scale, 18 * scale]);
     ctx.beginPath();
-    ctx.moveTo(VW / 2, 0);
-    ctx.lineTo(VW / 2, VH);
+    ctx.moveTo(w / 2, 0);
+    ctx.lineTo(w / 2, h);
     ctx.stroke();
     ctx.restore();
 
     // Título
     ctx.save();
     ctx.fillStyle = "rgba(255,255,255,0.28)";
-    ctx.font = "700 18px 'Courier New',monospace";
+    ctx.font = `700 ${18 * scale}px 'Courier New',monospace`;
     ctx.textAlign = "center";
-    ctx.textBaseline = "alphabetic";
-    let title = "MARKET PONG";
-    ctx.fillText(title.split("").join(" "), VW / 2, 34);
+    ctx.fillText("MARKET PONG".split("").join(" "), w / 2, 30 * scale);
     ctx.restore();
 
-    // Marcador (monospace grande)
+    // Marcador grande monospace
     ctx.save();
     ctx.fillStyle = "rgba(255,255,255,0.92)";
-    ctx.font = "700 64px 'Courier New',monospace";
+    ctx.font = `700 ${56 * scale}px 'Courier New',monospace`;
     ctx.textBaseline = "top";
     ctx.textAlign = "right";
-    ctx.fillText(String(s.pScore), VW / 2 - 50, 54);
+    ctx.fillText(String(s.pScore), w / 2 - 44 * scale, 46 * scale);
     ctx.textAlign = "left";
-    ctx.fillText(String(s.cScore), VW / 2 + 50, 54);
-    // Sets ganados
+    ctx.fillText(String(s.cScore), w / 2 + 44 * scale, 46 * scale);
     ctx.fillStyle = "rgba(255,255,255,0.4)";
-    ctx.font = "700 13px 'Courier New',monospace";
+    ctx.font = `700 ${12 * scale}px 'Courier New',monospace`;
     ctx.textAlign = "center";
-    ctx.fillText(`SETS  ${s.pSets} - ${s.cSets}`, VW / 2, 126);
+    ctx.fillText(`SETS  ${s.pSets} - ${s.cSets}`, w / 2, 112 * scale);
     ctx.restore();
 
-    // Paletas
+    // Estela de la pelota (opacidad creciente hacia la cabeza)
+    if (s.phase === "playing") {
+      for (let i = 0; i < s.trail.length; i++) {
+        const tp = s.trail[i];
+        const a = ((i + 1) / s.trail.length) * 0.35;
+        ctx.save();
+        ctx.globalAlpha = a;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(tp.x - ball / 2, tp.y - ball / 2, ball, ball);
+        ctx.restore();
+      }
+    }
+
+    // Paletas + pelota con glow suave
     ctx.save();
+    ctx.shadowBlur = 8;
     ctx.shadowColor = "rgba(255,255,255,0.5)";
-    ctx.shadowBlur = 12;
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(PLAYER_X, s.playerY, PADDLE_W, PADDLE_H);
-    ctx.fillRect(CPU_X, s.cpuY, PADDLE_W, PADDLE_H);
-    // Pelota cuadrada
+    ctx.fillRect(g.playerX, s.playerY, g.pw, g.ph);
+    ctx.fillRect(g.cpuX, s.cpuY, g.pw, g.ph);
     if (s.phase === "playing" || s.phase === "countdown") {
-      ctx.fillRect(s.ball.x, s.ball.y, BALL, BALL);
+      ctx.fillRect(s.ball.x, s.ball.y, ball, ball);
     }
     ctx.restore();
 
-    // Countdown
+    // Countdown 3 · 2 · 1
     if (s.phase === "countdown") {
       const start = s.countdownStart || now;
       const step = Math.floor((now - start) / COUNTDOWN_STEP);
-      const label = step <= 0 ? "3" : step === 1 ? "2" : step === 2 ? "1" : "GO!";
+      const label = step <= 0 ? "3" : step === 1 ? "2" : "1";
       ctx.save();
-      ctx.fillStyle = label === "GO!" ? "#16c784" : "rgba(255,255,255,0.9)";
-      ctx.font = "700 90px 'Courier New',monospace";
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.font = `700 ${84 * scale}px 'Courier New',monospace`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(label, VW / 2, VH / 2 + 30);
+      ctx.fillText(label, w / 2, h / 2 + 24 * scale);
+      ctx.restore();
+    }
+
+    // Overlay fin de set
+    if (s.phase === "setover") {
+      overlayText(
+        ctx, g,
+        `SET ${s.setNumber} — ${s.setWinner === "player" ? "GANASTE" : "PERDISTE"}`,
+        `Sets ${s.pSets} - ${s.cSets}`,
+        s.setWinner === "player" ? "#16c784" : "#ea3943"
+      );
+    }
+
+    // Overlay fin de partido
+    if (s.phase === "matchover") {
+      overlayText(
+        ctx, g,
+        s.matchWinner === "player" ? "GANASTE EL PARTIDO" : "GANÓ LA CPU",
+        `Final ${s.pSets} - ${s.cSets} · reiniciando…`,
+        s.matchWinner === "player" ? "#16c784" : "#ea3943"
+      );
+    }
+
+    // Flash blanco al marcar (300ms)
+    if (s.flashStart && now - s.flashStart < FLASH_MS) {
+      ctx.save();
+      ctx.globalAlpha = (1 - (now - s.flashStart) / FLASH_MS) * 0.55;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, w, h);
       ctx.restore();
     }
   }
 
-  // --- Handlers ---
-  const handleMouseMove = useCallback((e) => {
+  function overlayText(ctx, g, title, sub, color) {
+    const { w, h, scale } = g;
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = color;
+    ctx.font = `700 ${30 * scale}px 'Courier New',monospace`;
+    ctx.fillText(title, w / 2, h / 2 - 12 * scale);
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.font = `700 ${14 * scale}px 'Courier New',monospace`;
+    ctx.fillText(sub, w / 2, h / 2 + 22 * scale);
+    ctx.restore();
+  }
+
+  // --- Control: la paleta izquierda sigue el puntero (mouse o touch) ---
+  const movePointer = useCallback((clientY) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    mouseRef.current.y = (e.clientY - rect.top) * (VH / rect.height);
+    pointerRef.current.y = (clientY - rect.top) * (dimsRef.current.h / rect.height);
   }, []);
 
-  const handlePlayAgain = useCallback(() => {
-    stateRef.current = freshMatch();
-    mouseRef.current.y = VH / 2;
-    syncPhase("countdown");
-  }, [syncPhase]);
-
-  const s = stateRef.current;
+  const handleMouseMove = useCallback((e) => movePointer(e.clientY), [movePointer]);
+  const handleTouchMove = useCallback((e) => {
+    if (e.touches[0]) { movePointer(e.touches[0].clientY); }
+  }, [movePointer]);
 
   return (
     <div className="px-6 py-5">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <span className="text-[20px] font-semibold text-white">Market Pong</span>
         <span className="text-xs text-text-sec">
-          Mové el mouse para controlar la paleta izquierda · 10 puntos por set · 2 sets gana
+          Mové el mouse para la paleta izquierda · 10 puntos por set · 2 sets gana
         </span>
       </div>
 
-      <div
-        className="relative rounded-xl overflow-hidden"
-        style={{ background: "#090912" }}
-      >
+      <div ref={wrapRef} className="rounded-xl overflow-hidden" style={{ background: "#090912" }}>
         <canvas
           ref={canvasRef}
-          width={VW}
-          height={VH}
           onMouseMove={handleMouseMove}
-          style={{ width: "100%", aspectRatio: `${VW} / ${VH}`, display: "block", cursor: "none" }}
+          onTouchMove={handleTouchMove}
+          style={{ width: "100%", display: "block", cursor: "none", touchAction: "none" }}
         />
-
-        {/* Overlay fin de set */}
-        {uiPhase === "setover" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/55">
-            <span className="font-mono text-2xl font-bold text-white">
-              {s.setWinner === "player" ? "¡Ganaste el set!" : "Set para la CPU"}
-            </span>
-            <span className="font-mono text-sm text-text-sec mt-2">
-              Sets {s.pSets} - {s.cSets} · sigue el próximo…
-            </span>
-          </div>
-        )}
-
-        {/* Overlay fin de partido */}
-        {uiPhase === "matchover" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/65">
-            <span className="font-mono text-3xl font-bold mb-1"
-              style={{ color: s.matchWinner === "player" ? "#16c784" : "#ea3943" }}>
-              {s.matchWinner === "player" ? "¡GANASTE!" : "GANÓ LA CPU"}
-            </span>
-            <span className="font-mono text-sm text-text-sec mb-5">
-              Partido {s.pSets} - {s.cSets}
-            </span>
-            <button
-              onClick={handlePlayAgain}
-              className="px-5 py-2 rounded-lg text-sm font-semibold bg-[#16c784]/20 border border-[#16c784]/50 text-[#16c784] hover:bg-[#16c784]/30 transition"
-            >
-              Jugar de nuevo
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
