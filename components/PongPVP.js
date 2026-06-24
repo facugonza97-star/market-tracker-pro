@@ -94,7 +94,7 @@ export default function PongPVP() {
       w, h, scale, pw, ph, ball, edge,
       playerX: edge,
       cpuX: w - edge - pw,
-      baseSpeed: 6.9 * scale,
+      baseSpeed: 4.5 * scale, // ~65% del saque anterior (6.9); acelera igual con cada rebote
     };
   }, []);
 
