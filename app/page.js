@@ -11,6 +11,7 @@ import LRMPanel from "@/components/LRMPanel";
 import EconCalendar from "@/components/EconCalendar";
 import BondPanel from "@/components/BondPanel";
 import BubbleChart from "@/components/BubbleChart";
+import PongGame from "@/components/PongGame";
 import Header from "@/components/Header";
 
 const TABS = ["Overview", "Tracker", "Bonos", "Forex", "Burbujas"];
@@ -18,6 +19,7 @@ const TABS = ["Overview", "Tracker", "Bonos", "Forex", "Burbujas"];
 export default function Home() {
   const { user } = useUser();
   const [tab, setTab] = useState("Overview");
+  const [bubblesView, setBubblesView] = useState("bubbles"); // "bubbles" | "pong"
   const [myGroups, setMyGroups] = useState(null);
   const [quotes, setQuotes] = useState(null);
   const [treasury, setTreasury] = useState(null);
@@ -147,7 +149,31 @@ export default function Home() {
       )}
 
       {!loading && tab === "Burbujas" && (
-        <BubbleChart sections={quotes?.sections} />
+        <>
+          <div className="px-6 pt-5 flex gap-1">
+            {[
+              { id: "bubbles", label: "Burbujas" },
+              { id: "pong", label: "Pong" },
+            ].map((v) => (
+              <button
+                key={v.id}
+                onClick={() => setBubblesView(v.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition border ${
+                  bubblesView === v.id
+                    ? "bg-white/10 border-white/30 text-white"
+                    : "bg-card border-border text-text-sec hover:text-white"
+                }`}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+          {bubblesView === "bubbles" ? (
+            <BubbleChart sections={quotes?.sections} />
+          ) : (
+            <PongGame />
+          )}
+        </>
       )}
 
       {!loading && tab === "Mi Tracker" && user && (
