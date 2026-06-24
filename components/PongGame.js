@@ -3,10 +3,10 @@ import { useEffect, useRef, useCallback } from "react";
 
 // --- Reglas (valores de referencia a 420px de alto; se escalan por dimensión) ---
 const REF_H = 420;          // alto de referencia (desktop)
-const POINTS_PER_SET = 10;  // puntos para ganar un set
+const POINTS_PER_SET = 6;   // puntos para ganar un set
 const SETS_TO_WIN = 2;      // sets para ganar el partido
-const MAX_MULT = 2;         // la pelota acelera hasta 2x
-const MULT_STEP = 0.08;     // incremento por rebote en paleta
+const MAX_MULT = 2.5;       // la pelota acelera hasta 2.5x
+const MULT_STEP = 0.08;     // +8% por rebote en paleta (factor 1.08)
 const COUNTDOWN_STEP = 650; // ms por número del countdown (3 · 2 · 1)
 const SETOVER_MS = 1500;    // overlay fin de set
 const MATCHOVER_MS = 3000;  // overlay fin de partido
@@ -60,8 +60,8 @@ export default function PongGame() {
       w, h, scale, pw, ph, ball, edge,
       playerX: edge,
       cpuX: w - edge - pw,
-      cpuMax: 4 * scale,
-      baseSpeed: 4.6 * scale,
+      cpuMax: 6.5 * scale,
+      baseSpeed: 6.9 * scale, // 4.6 × 1.5
     };
   }, []);
 
