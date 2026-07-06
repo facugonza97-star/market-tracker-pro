@@ -13,9 +13,10 @@ import BondPanel from "@/components/BondPanel";
 import BubbleChart from "@/components/BubbleChart";
 import PongGame from "@/components/PongGame";
 import PongPVP from "@/components/PongPVP";
+import MacroPanel from "@/components/MacroPanel";
 import Header from "@/components/Header";
 
-const TABS = ["Overview", "Tracker", "Bonos", "Forex", "Burbujas"];
+const TABS = ["Overview", "Tracker", "Bonos", "Forex", "Burbujas", "Macro"];
 
 export default function Home() {
   const { user } = useUser();
@@ -178,6 +179,10 @@ export default function Home() {
             <PongPVP />
           )}
         </>
+      )}
+
+      {!loading && tab === "Macro" && (
+        <MacroPanel />
       )}
 
       {!loading && tab === "Mi Tracker" && user && (
