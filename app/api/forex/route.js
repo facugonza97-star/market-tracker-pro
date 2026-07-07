@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { fetchForexQuotes, fetchStockPriceChange } from "@/lib/fmp";
 import { FOREX_CONFIG } from "@/lib/config";
-import { getDxy } from "@/lib/dxy";
+import { getDxy, getDxyHistory } from "@/lib/dxy";
 
 export const dynamic = "force-dynamic";
 
@@ -42,22 +42,23 @@ export async function GET() {
       };
     });
 
-    // DXY (real ICE Dollar Index) via the shared Yahoo module. Yahoo only gives
-    // us spot + daily change, so the longer periods stay null → render as "—".
-    const dxy = await getDxy();
+    // DXY (real ICE Dollar Index) via the shared Yahoo module. Spot price + 1D
+    // come from the 5-min quote; the longer periods + 52W high come from the
+    // 1-hour-cached daily history, computed like the FMP index tickers.
+    const [dxy, dxyHist] = await Promise.all([getDxy(), getDxyHistory()]);
     const dxyRow = {
       name: "US Dollar Index",
       ticker: "DXY",
       flag: "🇺🇸",
       price: dxy?.price ?? null,
       change: dxy?.d1 ?? null,
-      yearHigh: dxy?.yearHigh ?? null,
+      yearHigh: dxyHist?.yearHigh ?? dxy?.yearHigh ?? null,
       d1: dxy?.d1 ?? null,
-      w1: null,
-      m1: null,
-      ytd: null,
-      y1: null,
-      y3: null,
+      w1: dxyHist?.w1 ?? null,
+      m1: dxyHist?.m1 ?? null,
+      ytd: dxyHist?.ytd ?? null,
+      y1: dxyHist?.y1 ?? null,
+      y3: dxyHist?.y3 ?? null,
     };
 
     const withDxy = [dxyRow, ...result];
