@@ -34,6 +34,9 @@ export default function SummaryCards({ quotes, treasury, macro }) {
   const gold = findTicker("GCUSD");
   cards.push({ label: "Gold", val: gold?.price, chg: gold?.d1, fmt: "price" });
 
+  const dxy = quotes.summaryQuotes?.["DXY"];
+  cards.push({ label: "DXY", val: dxy?.price, chg: dxy?.d1, fmt: "decimal" });
+
   // Macro cards from Google Sheet
   const ipcUY = macro?.["IPC Uruguay"];
   if (ipcUY) {

@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { fetchQuotes, fetchStockPriceChange } from "@/lib/fmp";
-import yahooFinance from "yahoo-finance2";
+import YahooFinance from "yahoo-finance2";
 
 export const dynamic = "force-dynamic";
 
+// yahoo-finance2 v3 must be instantiated (v2's pre-built singleton is gone).
+const yahoo = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
+
 async function fetchYahooQuote(ticker) {
   try {
-    const result = await yahooFinance.quote(ticker);
+    const result = await yahoo.quote(ticker);
     if (!result?.regularMarketPrice) return null;
     return {
       ticker,
