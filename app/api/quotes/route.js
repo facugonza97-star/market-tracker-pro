@@ -1,33 +1,14 @@
 import { NextResponse } from "next/server";
 import { fetchQuotes, fetchStockPriceChange } from "@/lib/fmp";
 import { TICKER_CONFIG, SUMMARY_TICKERS } from "@/lib/config";
-import YahooFinance from "yahoo-finance2";
+import { getDxy } from "@/lib/dxy";
 
 
 export const dynamic = "force-dynamic";
 
-// yahoo-finance2 v3 must be instantiated (v2's pre-built singleton is gone).
-const yahoo = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
-
 // Cache in memory
 let cache = { data: null, timestamp: 0 };
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-// DXY (US Dollar Index) isn't available on FMP's Starter plan — pull it from
-// Yahoo Finance (symbol DX-Y.NYB), same fallback pattern as ticker-quotes.
-async function fetchYahooQuote(ticker) {
-  try {
-    const result = await yahoo.quote(ticker);
-    if (!result?.regularMarketPrice) return null;
-    return {
-      price: result.regularMarketPrice,
-      yearHigh: result.fiftyTwoWeekHigh ?? null,
-      d1: result.regularMarketChangePercent ?? null,
-    };
-  } catch {
-    return null;
-  }
-}
 
 export async function GET() {
   const now = Date.now();
@@ -103,8 +84,8 @@ export async function GET() {
       };
     }
 
-    // DXY via Yahoo Finance fallback — if it fails, the card just shows "—"
-    const dxy = await fetchYahooQuote("DX-Y.NYB");
+    // DXY via shared Yahoo Finance module — if it fails, the card just shows "—"
+    const dxy = await getDxy();
     summaryQuotes["DXY"] = {
       price: dxy?.price ?? null,
       yearHigh: dxy?.yearHigh ?? null,

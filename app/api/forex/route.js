@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { fetchForexQuotes, fetchStockPriceChange } from "@/lib/fmp";
 import { FOREX_CONFIG } from "@/lib/config";
+import { getDxy } from "@/lib/dxy";
 
 export const dynamic = "force-dynamic";
 
@@ -41,8 +42,27 @@ export async function GET() {
       };
     });
 
-    cache = { data: result, timestamp: now };
-    return NextResponse.json(result);
+    // DXY (real ICE Dollar Index) via the shared Yahoo module. Yahoo only gives
+    // us spot + daily change, so the longer periods stay null → render as "—".
+    const dxy = await getDxy();
+    const dxyRow = {
+      name: "US Dollar Index",
+      ticker: "DXY",
+      flag: "🇺🇸",
+      price: dxy?.price ?? null,
+      change: dxy?.d1 ?? null,
+      yearHigh: dxy?.yearHigh ?? null,
+      d1: dxy?.d1 ?? null,
+      w1: null,
+      m1: null,
+      ytd: null,
+      y1: null,
+      y3: null,
+    };
+
+    const withDxy = [dxyRow, ...result];
+    cache = { data: withDxy, timestamp: now };
+    return NextResponse.json(withDxy);
   } catch (error) {
     if (cache.data) return NextResponse.json(cache.data);
     return NextResponse.json({ error: "Failed" }, { status: 500 });
