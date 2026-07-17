@@ -114,7 +114,7 @@ export default function TrackerTable({ quotes }) {
                     >
                       <td className="px-3 py-2 text-[14px] font-medium text-white">{item.name}</td>
                       <td className="px-2 py-2 text-[14px] text-accent font-mono font-medium">{item.ticker}</td>
-                      <td className="px-2 py-2 text-center text-[14px] text-white font-semibold font-mono">
+                      <td className="px-2 py-2 text-center text-[14px] text-price font-semibold font-mono">
                         {fmtPrice(item.price)}
                       </td>
                       <td className="px-2 py-2 text-center text-[14px] text-white font-mono">

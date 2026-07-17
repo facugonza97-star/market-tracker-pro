@@ -63,7 +63,7 @@ export default function SummaryCards({ quotes, treasury, macro }) {
           className="bg-card border border-border rounded-xl px-5 py-3.5 min-w-[140px] flex-1"
         >
           <div className="text-[11px] text-text-dim font-semibold tracking-wide mb-1">{c.label}</div>
-          <div className="text-xl font-bold text-white font-mono">{format(c.val, c.fmt)}</div>
+          <div className="text-xl font-bold text-price font-mono">{format(c.val, c.fmt)}</div>
           {c.chg !== null && c.chg !== undefined && (
             <div className={`text-xs font-semibold mt-0.5 ${c.chg >= 0 ? "text-pos" : "text-neg"}`}>
               {c.chg >= 0 ? "+" : ""}{parseFloat(c.chg).toFixed(1)}%

@@ -60,11 +60,11 @@ export default function YieldCurve({ treasury, full }) {
         <AreaChart data={data} margin={{ top: 25, right: 15, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="yieldGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#5B8DEF" stopOpacity={0.15} />
-              <stop offset="95%" stopColor="#5B8DEF" stopOpacity={0} />
+              <stop offset="0%" stopColor="#132A4D" stopOpacity={0.95} />
+              <stop offset="100%" stopColor="#132A4D" stopOpacity={0.75} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1E2D40" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#FFFFFF" strokeOpacity={0.12} vertical={false} />
           <XAxis
             dataKey="mat"
             tick={{ fill: "#94A3B8", fontSize: 12 }}
@@ -83,11 +83,11 @@ export default function YieldCurve({ treasury, full }) {
           <Area
             type="monotone"
             dataKey="rate"
-            stroke="#5B8DEF"
+            stroke="#FFFFFF"
             strokeWidth={2}
             fill="url(#yieldGrad)"
-            dot={{ r: 4, fill: "#5B8DEF", strokeWidth: 0 }}
-            activeDot={{ r: 6, fill: "#5B8DEF", stroke: "#ffffff", strokeWidth: 2 }}
+            dot={{ r: 4, fill: "#FFFFFF", strokeWidth: 0 }}
+            activeDot={{ r: 6, fill: "#FFFFFF", stroke: "#132A4D", strokeWidth: 2 }}
           >
             <LabelList dataKey="rate" position="top" offset={10} formatter={(v) => v.toFixed(2) + "%"} style={{ fontSize: 11, fill: "#FFFFFF", fontWeight: 600 }} />
           </Area>

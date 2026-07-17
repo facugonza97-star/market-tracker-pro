@@ -19,8 +19,9 @@ module.exports = {
         'text-dim': '#CBD5E0',
         accent: '#5B8DEF',
         'accent-muted': 'rgba(91,141,239,0.1)',
-        pos: '#48BB78',
-        neg: '#F56565',
+        pos: '#4AF6C3',
+        neg: '#FF433D',
+        price: '#F8A11E',
         gold: '#D4A957',
       },
       fontFamily: {

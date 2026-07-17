@@ -61,7 +61,7 @@ export default function ForexStrip({ forex, full }) {
                     <span className="mr-1.5">{f.flag}</span>{f.name}
                   </td>
                   <td className="px-2 py-2 text-[11px] text-accent font-mono font-medium">{f.ticker}</td>
-                  <td className="px-2 py-2 text-center text-xs text-white font-semibold font-mono">
+                  <td className="px-2 py-2 text-center text-xs text-price font-semibold font-mono">
                     {f.price ? (f.price < 10 ? f.price.toFixed(4) : f.price.toFixed(2)) : "—"}
                   </td>
                   <td className="px-2 py-2 text-center text-[11px] text-text-dim font-mono">
@@ -93,7 +93,7 @@ export default function ForexStrip({ forex, full }) {
           <span className="text-2xl">{f.flag}</span>
           <div className="flex-1">
             <div className="text-xs text-text-dim font-semibold tracking-wide mb-0.5">{f.name}</div>
-            <div className="text-xl font-bold text-white font-mono">
+            <div className="text-xl font-bold text-price font-mono">
               {f.price ? (f.price < 10 ? f.price.toFixed(4) : f.price.toFixed(2)) : "—"}
             </div>
           </div>

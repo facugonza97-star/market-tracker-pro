@@ -428,19 +428,26 @@ function TradeTicket({ bond, activeConfig, onClose }) {
       <div onClick={e => e.stopPropagation()} style={{ backgroundColor: "#0F1520", border: "1px solid #2A3A50", borderRadius: 12, width: 480, maxHeight: "90vh", overflowY: "auto" }}>
 
         {/* Header */}
-        <div style={{ background: "#1a1a2e", padding: "12px 20px", borderRadius: "12px 12px 0 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ background: "#8B1A1A", padding: "12px 20px", borderRadius: "12px 12px 0 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ color: "white", fontWeight: 700, fontSize: 13, letterSpacing: 0.5 }}>TICKET DE OPERACIÓN</div>
-            <div style={{ color: "#94A3B8", fontSize: 10, marginTop: 2 }}>Gastón Bengochea Corredor de Bolsa</div>
+            <div style={{ color: "#E8C9C9", fontSize: 10, marginTop: 2 }}>Gastón Bengochea Corredor de Bolsa</div>
           </div>
-          <button onClick={onClose} style={{ color: "#94A3B8", fontSize: 18, background: "none", border: "none", cursor: "pointer" }}>✕</button>
+          <button onClick={onClose} style={{ color: "#E8C9C9", fontSize: 18, background: "none", border: "none", cursor: "pointer" }}>✕</button>
+        </div>
+
+        {/* Barra de acciones de referencia (estético, estilo pantalla Bloomberg) */}
+        <div style={{ background: "#6b5a3a", padding: "5px 20px", display: "flex", gap: 18, alignItems: "center" }}>
+          {["Deal", "Scenario", "Settings"].map((a) => (
+            <span key={a} style={{ color: "#5B8DEF", fontSize: 10, fontWeight: 600, letterSpacing: 0.3 }}>{a}</span>
+          ))}
         </div>
 
         <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
 
           {/* Info del bono */}
           <div style={{ background: "#1A2535", borderRadius: 8, padding: "10px 14px" }}>
-            <div style={{ color: "#94A3B8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Bono</div>
+            <div style={{ color: "#5B8DEF", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Bono</div>
             <div style={{ color: "white", fontWeight: 700, fontSize: 12 }}>{bond.emisor}</div>
             <div style={{ display: "flex", gap: 16, marginTop: 6 }}>
               {[["Cupón", bond.cupon?.toFixed(3) + "%"], ["Vencimiento", bond.vencimiento], ["Ask", bond.ask?.toFixed(2) ?? "—"]].map(([l, v]) => (
@@ -454,7 +461,7 @@ function TradeTicket({ bond, activeConfig, onClose }) {
 
           {/* Trader */}
           <div>
-            <label style={{ color: "#94A3B8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>Asesor</label>
+            <label style={{ color: "#5B8DEF", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>Asesor</label>
             <input value={trader} onChange={e => setTrader(e.target.value)} placeholder="Nombre del asesor" style={{ width: "100%", background: "#1A2535", border: "1px solid #2A3A50", borderRadius: 6, padding: "7px 10px", color: "white", fontSize: 12, outline: "none" }} />
           </div>
 
@@ -462,8 +469,10 @@ function TradeTicket({ bond, activeConfig, onClose }) {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {[["Precio limpio", precio, setPrecio, "0.01", "Ej: 95.00"], ["Nominal (USD)", nominal, setNominal, "1000", "Ej: 100000"]].map(([lbl, val, set, step, ph]) => (
               <div key={lbl}>
-                <label style={{ color: "#94A3B8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>{lbl}</label>
-                <input type="number" value={val} onChange={e => set(e.target.value)} placeholder={ph} step={step} style={{ width: "100%", background: "#1A2535", border: "1px solid #2A3A50", borderRadius: 6, padding: "7px 10px", color: "white", fontSize: 12, fontFamily: "monospace", outline: "none" }} />
+                <label style={{ color: "#5B8DEF", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>{lbl}</label>
+                <input type="number" value={val} onChange={e => set(e.target.value)} placeholder={ph} step={step} style={lbl === "Precio limpio"
+                  ? { width: "100%", background: "#F8A11E", border: "1px solid #F8A11E", borderRadius: 6, padding: "7px 10px", color: "#3a2400", fontSize: 12, fontWeight: 700, fontFamily: "monospace", outline: "none" }
+                  : { width: "100%", background: "#1A2535", border: "1px solid #2A3A50", borderRadius: 6, padding: "7px 10px", color: "white", fontSize: 12, fontFamily: "monospace", outline: "none" }} />
               </div>
             ))}
           </div>
@@ -471,7 +480,7 @@ function TradeTicket({ bond, activeConfig, onClose }) {
           {/* Comisión con toggle */}
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-              <label style={{ color: "#94A3B8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5 }}>Comisión (%)</label>
+              <label style={{ color: "#5B8DEF", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5 }}>Comisión (%)</label>
               <button onClick={() => setComisionOn(!comisionOn)} style={{ background: comisionOn ? "#1a1a2e" : "#1A2535", border: `1px solid ${comisionOn ? "#4A6FA5" : "#2A3A50"}`, borderRadius: 20, padding: "2px 10px", color: comisionOn ? "#93C5FD" : "#64748B", fontSize: 9, cursor: "pointer", fontWeight: 600, letterSpacing: 0.3 }}>
                 {comisionOn ? "INCLUIDA" : "EXCLUIDA"}
               </button>
@@ -482,7 +491,7 @@ function TradeTicket({ bond, activeConfig, onClose }) {
           {/* Resultados */}
           {r ? (
             <div style={{ background: "#1A2535", borderRadius: 8, padding: "12px 14px" }}>
-              <div style={{ color: "#94A3B8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Resumen de la operación</div>
+              <div style={{ color: "#5B8DEF", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Resumen de la operación</div>
               {[
                 ["Principal", "USD " + fmt(r.principal)],
                 ["Cupón corrido", "USD " + fmt(r.accrued)],
@@ -496,7 +505,7 @@ function TradeTicket({ bond, activeConfig, onClose }) {
               ))}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
                 <span style={{ color: "#94A3B8", fontSize: 11 }}>TIR (mercado)</span>
-                <span style={{ color: "white", fontSize: 15, fontWeight: 700, fontFamily: "monospace" }}>{r.tir}%</span>
+                <span style={{ background: "#F8A11E", color: "#3a2400", fontSize: 15, fontWeight: 700, fontFamily: "monospace", padding: "2px 10px", borderRadius: 4 }}>{r.tir}%</span>
               </div>
               {comisionOn && r.tirNeta && (
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
@@ -591,11 +600,11 @@ export default function BondPanel() {
               onClick={() => handlePrintAll({ sections, lastUpdate })}
               className="border border-white/20 text-text-sec px-4 py-2 rounded-lg text-sm font-semibold hover:text-white hover:border-white/40 transition"
             >
-              📄 Imprimir Todo
+              Imprimir Todo
             </button>
           )}
           <label className={`bg-accent text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-accent/80 transition cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
-            {uploading ? "Procesando..." : "📊 Subir Excel de Bonos"}
+            {uploading ? "Procesando..." : "Subir Excel de Bonos"}
             <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleUpload} disabled={uploading} />
           </label>
         </div>
@@ -639,7 +648,7 @@ export default function BondPanel() {
                 <button
                   onClick={() => handlePrint({ activeData, activeConfig, compareData: isComparing ? compareData : null, compareConfig: isComparing ? compareConfig : null, isComparing, lastUpdate })}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition border border-white/20 text-text-sec hover:text-white hover:border-white/40">
-                  🖨️ Imprimir
+                  Imprimir
                 </button>
               </div>
             </div>
@@ -647,8 +656,8 @@ export default function BondPanel() {
               <AreaChart data={chartData} margin={{ top: 15, right: 15, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="bondGrad1" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={activeConfig.color} stopOpacity={0.15} />
-                    <stop offset="95%" stopColor={activeConfig.color} stopOpacity={0} />
+                    <stop offset="0%" stopColor="#132A4D" stopOpacity={0.95} />
+                    <stop offset="100%" stopColor="#132A4D" stopOpacity={0.75} />
                   </linearGradient>
                   {isComparing && compareConfig && (
                     <linearGradient id="bondGrad2" x1="0" y1="0" x2="0" y2="1">
@@ -657,18 +666,18 @@ export default function BondPanel() {
                     </linearGradient>
                   )}
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1E2D40" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#FFFFFF" strokeOpacity={0.12} vertical={false} />
                 <XAxis dataKey="year" tick={{ fill: "#94A3B8", fontSize: 12 }} tickLine={false} axisLine={{ stroke: "#1E2D40" }} />
                 <YAxis domain={[minRate, maxRate]} tick={{ fill: "#94A3B8", fontSize: 12 }} tickLine={false} axisLine={false} tickFormatter={v => v.toFixed(1) + "%"} width={50} />
                 <Tooltip content={isComparing ? <CompareTooltip /> : <SingleTooltip />} cursor={{ stroke: "#94A3B8", strokeOpacity: 0.3 }} />
                 {isComparing ? (
                   <>
-                    <Area type="monotone" dataKey="tir1" name={activeConfig.label} stroke={activeConfig.color} strokeWidth={2} fill="url(#bondGrad1)" dot={{ r: 3, fill: activeConfig.color, strokeWidth: 0 }} activeDot={{ r: 5, fill: activeConfig.color, stroke: "#fff", strokeWidth: 2 }} connectNulls />
+                    <Area type="monotone" dataKey="tir1" name={activeConfig.label} stroke="#FFFFFF" strokeWidth={2} fill="url(#bondGrad1)" dot={{ r: 3, fill: "#FFFFFF", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#FFFFFF", stroke: "#132A4D", strokeWidth: 2 }} connectNulls />
                     <Area type="monotone" dataKey="tir2" name={compareConfig.label} stroke={compareConfig.color} strokeWidth={2} fill="url(#bondGrad2)" dot={{ r: 3, fill: compareConfig.color, strokeWidth: 0 }} activeDot={{ r: 5, fill: compareConfig.color, stroke: "#fff", strokeWidth: 2 }} connectNulls />
                     <Legend verticalAlign="top" height={30} formatter={value => <span style={{ color: "#CBD5E0", fontSize: 12 }}>{value}</span>} />
                   </>
                 ) : (
-                  <Area type="monotone" dataKey="tir" name={activeConfig.label} stroke={activeConfig.color} strokeWidth={2} fill="url(#bondGrad1)" dot={{ r: 4, fill: activeConfig.color, strokeWidth: 0 }} activeDot={{ r: 6, fill: activeConfig.color, stroke: "#fff", strokeWidth: 2 }} />
+                  <Area type="monotone" dataKey="tir" name={activeConfig.label} stroke="#FFFFFF" strokeWidth={2} fill="url(#bondGrad1)" dot={{ r: 4, fill: "#FFFFFF", strokeWidth: 0 }} activeDot={{ r: 6, fill: "#FFFFFF", stroke: "#132A4D", strokeWidth: 2 }} />
                 )}
               </AreaChart>
             </ResponsiveContainer>
