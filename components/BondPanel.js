@@ -424,23 +424,24 @@ function TradeTicket({ bond, activeConfig, onClose }) {
   const fecha = `${String(today.getDate()).padStart(2,"0")}/${String(today.getMonth()+1).padStart(2,"0")}/${today.getFullYear()}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.75)" }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ backgroundColor: "#0F1520", border: "1px solid #2A3A50", borderRadius: 12, width: 480, maxHeight: "90vh", overflowY: "auto" }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.4)" }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ backgroundColor: "#0F1520", border: "1px solid #2A3A50", borderRadius: 2, width: 480, maxHeight: "90vh", overflowY: "auto" }}>
 
-        {/* Header */}
-        <div style={{ background: "#81020D", padding: "12px 20px", borderRadius: "12px 12px 0 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <div style={{ color: "white", fontWeight: 700, fontSize: 13, letterSpacing: 0.5 }}>TICKET DE OPERACIÓN</div>
-            <div style={{ color: "#E8C9C9", fontSize: 10, marginTop: 2 }}>Gastón Bengochea Corredor de Bolsa</div>
+        {/* Header: fila de acciones numeradas (azul accent) + nombre del panel a la derecha */}
+        <div style={{ background: "#81020D", padding: "8px 16px", borderRadius: "2px 2px 0 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+            {[
+              ["1) Deal", () => {}],
+              ["2) Recalcular", () => { setPrecio(bond.ask?.toFixed(2) ?? ""); setNominal("100000"); setTrader(""); setComision("0.50"); setComisionOn(true); }],
+              ["3) Imprimir", () => { if (r) printTicket({ bond, precio, nominal, trader, comision, comisionOn, r, fecha }); }],
+            ].map(([lbl, fn]) => (
+              <button key={lbl} onClick={fn} style={{ color: "#5B8DEF", fontSize: 11, fontWeight: 600, letterSpacing: 0.3, background: "none", border: "none", cursor: "pointer", padding: 0 }}>{lbl}</button>
+            ))}
           </div>
-          <button onClick={onClose} style={{ color: "#E8C9C9", fontSize: 18, background: "none", border: "none", cursor: "pointer" }}>✕</button>
-        </div>
-
-        {/* Barra de acciones de referencia (estético, estilo pantalla Bloomberg) */}
-        <div style={{ background: "#6b5a3a", padding: "5px 20px", display: "flex", gap: 18, alignItems: "center" }}>
-          {["Deal", "Scenario", "Settings"].map((a) => (
-            <span key={a} style={{ color: "#5B8DEF", fontSize: 10, fontWeight: 600, letterSpacing: 0.3 }}>{a}</span>
-          ))}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ color: "#E8C9C9", fontSize: 11 }}>Ticket de Operación</span>
+            <button onClick={onClose} style={{ color: "#E8C9C9", fontSize: 16, background: "none", border: "none", cursor: "pointer" }}>✕</button>
+          </div>
         </div>
 
         <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>

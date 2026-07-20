@@ -57,7 +57,7 @@ export default function ForexStrip({ forex, full }) {
                   key={i}
                   className={`border-b border-border hover:bg-card-hover ${i % 2 === 0 ? "" : "bg-white/[0.01]"}`}
                 >
-                  <td className="px-3 py-2 text-xs text-text-primary">
+                  <td className="px-3 py-2 text-xs text-price">
                     <span className="mr-1.5">{f.flag}</span>{f.name}
                   </td>
                   <td className="px-2 py-2 text-[11px] text-accent font-mono font-medium">{f.ticker}</td>
