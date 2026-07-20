@@ -652,12 +652,13 @@ export default function BondPanel() {
                 </button>
               </div>
             </div>
+            <div style={{ background: "#000000", borderRadius: 8, padding: "8px 4px" }}>
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={chartData} margin={{ top: 15, right: 15, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="bondGrad1" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#132A4D" stopOpacity={0.95} />
-                    <stop offset="100%" stopColor="#132A4D" stopOpacity={0.75} />
+                    <stop offset="0%" stopColor="#031D38" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#031D38" stopOpacity={1} />
                   </linearGradient>
                   {isComparing && compareConfig && (
                     <linearGradient id="bondGrad2" x1="0" y1="0" x2="0" y2="1">
@@ -666,7 +667,7 @@ export default function BondPanel() {
                     </linearGradient>
                   )}
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#FFFFFF" strokeOpacity={0.12} vertical={false} />
+                <CartesianGrid strokeDasharray="2 2" stroke="#FFFFFF" strokeOpacity={0.15} />
                 <XAxis dataKey="year" tick={{ fill: "#94A3B8", fontSize: 12 }} tickLine={false} axisLine={{ stroke: "#1E2D40" }} />
                 <YAxis domain={[minRate, maxRate]} tick={{ fill: "#94A3B8", fontSize: 12 }} tickLine={false} axisLine={false} tickFormatter={v => v.toFixed(1) + "%"} width={50} />
                 <Tooltip content={isComparing ? <CompareTooltip /> : <SingleTooltip />} cursor={{ stroke: "#94A3B8", strokeOpacity: 0.3 }} />
@@ -681,6 +682,7 @@ export default function BondPanel() {
                 )}
               </AreaChart>
             </ResponsiveContainer>
+            </div>
           </div>
           <div className="bg-card border border-border rounded-xl overflow-x-auto">
             <table style={{ borderCollapse: "collapse" }}>

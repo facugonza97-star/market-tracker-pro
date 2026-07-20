@@ -56,15 +56,16 @@ export default function YieldCurve({ treasury, full }) {
         <span className="text-[20px] font-semibold text-white">🇺🇸 US Treasury Yield Curve</span>
         <span className="text-xs text-text-dim">All maturities</span>
       </div>
+      <div style={{ background: "#000000", borderRadius: 8, padding: "8px 4px" }}>
       <ResponsiveContainer width="100%" height={height}>
         <AreaChart data={data} margin={{ top: 25, right: 15, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="yieldGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#132A4D" stopOpacity={0.95} />
-              <stop offset="100%" stopColor="#132A4D" stopOpacity={0.75} />
+              <stop offset="0%" stopColor="#031D38" stopOpacity={1} />
+              <stop offset="100%" stopColor="#031D38" stopOpacity={1} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#FFFFFF" strokeOpacity={0.12} vertical={false} />
+          <CartesianGrid strokeDasharray="2 2" stroke="#FFFFFF" strokeOpacity={0.15} />
           <XAxis
             dataKey="mat"
             tick={{ fill: "#94A3B8", fontSize: 12 }}
@@ -93,6 +94,7 @@ export default function YieldCurve({ treasury, full }) {
           </Area>
         </AreaChart>
       </ResponsiveContainer>
+      </div>
       {spread10y2y !== null && (() => {
         const s = parseFloat(spread10y2y);
         let label, color;
