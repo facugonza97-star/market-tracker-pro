@@ -85,7 +85,7 @@ function LRMCalculadora({ onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.75)" }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{ backgroundColor: "#0F1520", border: "1px solid #2A3A50", borderRadius: 12, width: 440, maxHeight: "90vh", overflowY: "auto" }}>
-        <div style={{ background: "#880F1D", padding: "12px 20px", borderRadius: "12px 12px 0 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ background: "#81020D", padding: "12px 20px", borderRadius: "12px 12px 0 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ color: "white", fontWeight: 700, fontSize: 13, letterSpacing: 0.5 }}>CALCULADORA LRM</div>
             <div style={{ color: "#E8C9C9", fontSize: 10, marginTop: 2 }}>Letras de Regulación Monetaria</div>
