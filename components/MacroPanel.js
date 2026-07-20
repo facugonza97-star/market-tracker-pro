@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { MACRO_CATEGORIES } from "@/lib/macroConfig";
 
 function fmtDate(dateStr) {
@@ -18,7 +18,7 @@ function fmtNum(v, unit) {
 }
 
 // Returns { tone: 'pos'|'neg'|'neutral', diff, arrow } given the raw values and
-// the indicator's explicit favorable direction.
+// the indicator's explicit favorable direction. (Logic unchanged — layout only.)
 function getVariation(actual, previous, favorable) {
   const a = typeof actual === "number" ? actual : parseFloat(actual);
   const p = typeof previous === "number" ? previous : parseFloat(previous);
@@ -32,86 +32,35 @@ function getVariation(actual, previous, favorable) {
   return { tone: good ? "pos" : "neg", diff, arrow: rising ? "▲" : "▼" };
 }
 
-// Color-only signal — no filled pills. Matches the app's pos/neg palette.
-const TONE_COLOR = {
-  pos: "#48BB78",
-  neg: "#F56565",
-  neutral: "#6B7280",
-};
+const TONE_CLASS = { pos: "text-pos", neg: "text-neg", neutral: "text-text-dim" };
 
-function IndicatorCell({ ind, data }) {
+function IndicatorRow({ ind, data }) {
   const d = data || {};
   const v = getVariation(d.actual, d.previous, ind.favorable);
-  const color = TONE_COLOR[v.tone];
   const diffText =
-    v.diff === null || v.diff === 0
-      ? null
-      : `${v.arrow} ${fmtNum(Math.abs(v.diff), ind.unit)}`;
+    v.diff === null || v.diff === 0 ? "—" : `${v.arrow} ${fmtNum(Math.abs(v.diff), ind.unit)}`;
 
   return (
-    <div className="bg-card px-4 py-3 flex flex-col">
-      {/* Indicator name */}
-      <div className="text-[12px] text-text-sec mb-2 truncate">{ind.label}</div>
-
-      {/* Main row: current value + variation */}
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="text-[24px] leading-none font-semibold text-white font-mono tabular-nums">
-          {fmtNum(d.actual, ind.unit)}
-        </span>
-        <span
-          className="text-[12px] font-semibold font-mono tabular-nums whitespace-nowrap"
-          style={{ color }}
-        >
-          {diffText || <span className="text-text-dim">—</span>}
-        </span>
-      </div>
-
-      {/* Footer: previous + date */}
-      <div className="flex items-center justify-between text-[10.5px] mt-3 pt-2.5 border-t border-border/60">
-        <span className="text-text-dim">
-          Ant.{" "}
-          <span className="text-text-sec font-mono tabular-nums">{fmtNum(d.previous, ind.unit)}</span>
-        </span>
-        <span className="text-text-dim font-mono tabular-nums">{fmtDate(d.date)}</span>
-      </div>
-
-      {/* Next release */}
-      <div className="text-[10px] text-text-dim/80 mt-1">
-        {d.nextRelease ? (
-          <>Próx. <span className="font-mono tabular-nums">{fmtDate(d.nextRelease)}</span></>
-        ) : (
-          <span className="opacity-0">·</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function CategorySection({ cat, data }) {
-  return (
-    <div>
-      {/* Eyebrow header: accent bar + uppercase spaced label (no emoji) */}
-      <div className="flex items-center gap-2.5 mb-2.5">
-        <span className="w-[3px] h-3.5 rounded-full bg-accent" />
-        <span className="text-[11px] font-bold text-text-sec uppercase tracking-[0.18em]">
-          {cat.name}
-        </span>
-      </div>
-
-      {/* Data grid — hairline dividers via 1px gap over the border color */}
-      <div
-        className="grid rounded-md overflow-hidden border border-border"
-        style={{
-          gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
-          gap: "1px",
-          backgroundColor: "#1C2536",
-        }}
-      >
-        {cat.indicators.map((ind) => (
-          <IndicatorCell key={ind.id} ind={ind} data={data?.[ind.id]} />
-        ))}
-      </div>
-    </div>
+    <tr className="border-b border-white/5 hover:bg-[#1a2f52]">
+      <td className="px-3 py-1.5 text-[13px] text-price border-r border-white/5 whitespace-nowrap">
+        {ind.label}
+      </td>
+      <td className="px-3 py-1.5 text-right text-[15px] text-white font-mono tabular-nums border-r border-white/5">
+        {fmtNum(d.actual, ind.unit)}
+      </td>
+      <td className="px-3 py-1.5 text-right text-[13px] text-text-dim font-mono tabular-nums border-r border-white/5">
+        {fmtNum(d.previous, ind.unit)}
+      </td>
+      <td className={`px-3 py-1.5 text-right text-[13px] font-mono tabular-nums font-semibold border-r border-white/5 whitespace-nowrap ${TONE_CLASS[v.tone]}`}>
+        {diffText}
+      </td>
+      <td className="px-3 py-1.5 text-right text-[11px] text-text-sec font-mono border-r border-white/5 whitespace-nowrap">
+        {fmtDate(d.date)}
+      </td>
+      <td className="px-3 py-1.5 text-right text-[11px] text-text-sec font-mono whitespace-nowrap">
+        {fmtDate(d.nextRelease)}
+      </td>
+    </tr>
   );
 }
 
@@ -148,6 +97,8 @@ export default function MacroPanel() {
     };
   }, []);
 
+  const th = "px-3 py-2.5 text-[11px] font-bold text-[#94A3B8] uppercase tracking-wide";
+
   return (
     <div className="px-6 py-5">
       <div className="flex items-baseline justify-between mb-5 flex-wrap gap-2">
@@ -164,10 +115,35 @@ export default function MacroPanel() {
           No se pudieron cargar los indicadores. Intentá de nuevo más tarde.
         </div>
       ) : (
-        <div className="space-y-7">
-          {MACRO_CATEGORIES.map((cat) => (
-            <CategorySection key={cat.name} cat={cat} data={data} />
-          ))}
+        <div className="overflow-x-auto rounded-md border border-border">
+          <table className="w-full min-w-[720px]" style={{ background: "#000000", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "#0d0d1a" }}>
+                <th className={`${th} text-left border-r border-white/10`}>Indicador</th>
+                <th className={`${th} text-right border-r border-white/10`}>Actual</th>
+                <th className={`${th} text-right border-r border-white/10`}>Anterior</th>
+                <th className={`${th} text-right border-r border-white/10`}>Variación</th>
+                <th className={`${th} text-right border-r border-white/10`}>Fecha</th>
+                <th className={`${th} text-right`}>Próximo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {MACRO_CATEGORIES.map((cat) => (
+                <React.Fragment key={cat.name}>
+                  <tr className="bg-card">
+                    <td colSpan={6} className="px-3 py-1.5">
+                      <span className="text-[11px] font-bold text-accent uppercase tracking-[0.18em]">
+                        {cat.name}
+                      </span>
+                    </td>
+                  </tr>
+                  {cat.indicators.map((ind) => (
+                    <IndicatorRow key={ind.id} ind={ind} data={data?.[ind.id]} />
+                  ))}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
