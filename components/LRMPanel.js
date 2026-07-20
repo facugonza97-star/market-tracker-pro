@@ -85,12 +85,17 @@ function LRMCalculadora({ onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.75)" }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{ backgroundColor: "#0F1520", border: "1px solid #2A3A50", borderRadius: 12, width: 440, maxHeight: "90vh", overflowY: "auto" }}>
-        <div style={{ background: "#1a1a2e", padding: "12px 20px", borderRadius: "12px 12px 0 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ background: "#880F1D", padding: "12px 20px", borderRadius: "12px 12px 0 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ color: "white", fontWeight: 700, fontSize: 13, letterSpacing: 0.5 }}>CALCULADORA LRM</div>
-            <div style={{ color: "#94A3B8", fontSize: 10, marginTop: 2 }}>Letras de Regulación Monetaria</div>
+            <div style={{ color: "#E8C9C9", fontSize: 10, marginTop: 2 }}>Letras de Regulación Monetaria</div>
           </div>
-          <button onClick={onClose} style={{ color: "#94A3B8", fontSize: 18, background: "none", border: "none", cursor: "pointer" }}>✕</button>
+          <button onClick={onClose} style={{ color: "#E8C9C9", fontSize: 18, background: "none", border: "none", cursor: "pointer" }}>✕</button>
+        </div>
+        <div style={{ background: "#6b5a3a", padding: "5px 20px", display: "flex", gap: 18, alignItems: "center" }}>
+          {["Deal", "Scenario", "Settings"].map((a) => (
+            <span key={a} style={{ color: "#5B8DEF", fontSize: 10, fontWeight: 600, letterSpacing: 0.3 }}>{a}</span>
+          ))}
         </div>
 
         <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
@@ -102,7 +107,7 @@ function LRMCalculadora({ onClose }) {
               ["Comisión (%)", comision, setComision, "Ej: 0.30"],
             ].map(([lbl, val, set, ph]) => (
               <div key={lbl}>
-                <label style={{ color: "#94A3B8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>{lbl}</label>
+                <label style={{ color: "#5B8DEF", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>{lbl}</label>
                 <input type="number" value={val} onChange={e => set(e.target.value)} placeholder={ph} style={{ width: "100%", background: "#1A2535", border: "1px solid #2A3A50", borderRadius: 6, padding: "7px 10px", color: "white", fontSize: 12, fontFamily: "monospace", outline: "none" }} />
               </div>
             ))}
@@ -110,7 +115,7 @@ function LRMCalculadora({ onClose }) {
 
           {r ? (
             <div style={{ background: "#1A2535", borderRadius: 8, padding: "12px 14px" }}>
-              <div style={{ color: "#94A3B8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Resumen</div>
+              <div style={{ color: "#5B8DEF", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Resumen</div>
               {[
                 ["Precio", r.precio.toFixed(6)],
                 ["Coeficiente", r.coeficiente.toFixed(6)],
@@ -124,7 +129,7 @@ function LRMCalculadora({ onClose }) {
               ))}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4, paddingTop: 8, borderTop: "2px solid #2A3A50" }}>
                 <span style={{ color: "white", fontSize: 12, fontWeight: 600 }}>GANANCIA NETA</span>
-                <span style={{ color: "#48BB78", fontSize: 16, fontWeight: 700, fontFamily: "monospace" }}>$ {fmt(r.gananciaNeta)}</span>
+                <span style={{ background: "#F8A11E", color: "#3a2400", fontSize: 16, fontWeight: 700, fontFamily: "monospace", padding: "2px 10px", borderRadius: 4 }}>$ {fmt(r.gananciaNeta)}</span>
               </div>
             </div>
           ) : (
@@ -184,21 +189,25 @@ export default function LRMPanel() {
     <div className="bg-card border border-border rounded-xl p-5">
       {lrmModal && <LRMCalculadora onClose={() => setLrmModal(false)} />}
       <div className="flex justify-between items-center mb-4">
-        <span className="text-[20px] font-semibold text-white">🇺🇾 Letras de Regulación Monetaria (LRM)</span>
-        <button onClick={() => setLrmModal(true)} className="text-xs px-3 py-1.5 rounded-md font-semibold transition hover:opacity-80" style={{ backgroundColor: "#F59E0B22", color: "#F59E0B", border: "1px solid #F59E0B44" }}>Calculadora LRM</button>
+        <div className="flex items-center gap-2.5">
+          <span className="w-[3px] h-3.5 rounded-full bg-accent" />
+          <span className="text-[13px] font-bold text-accent uppercase tracking-[0.15em]">🇺🇾 Letras de Regulación Monetaria (LRM)</span>
+        </div>
+        <button onClick={() => setLrmModal(true)} className="text-xs px-3 py-1.5 rounded font-semibold text-[#3a2400] transition hover:opacity-90 bg-price">Calculadora LRM</button>
       </div>
 
       {chartData.length > 0 ? (
         <>
+          <div style={{ background: "#000000", borderRadius: 8, padding: "8px 4px" }}>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={chartData} margin={{ top: 25, right: 15, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="lrmGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
+                  <stop offset="0%" stopColor="#031D38" stopOpacity={1} />
+                  <stop offset="100%" stopColor="#031D38" stopOpacity={1} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1E2D40" vertical={false} />
+              <CartesianGrid strokeDasharray="2 2" stroke="#FFFFFF" strokeOpacity={0.15} />
               <XAxis
                 dataKey="mat"
                 tick={{ fill: "#94A3B8", fontSize: 12 }}
@@ -213,20 +222,21 @@ export default function LRMPanel() {
                 tickFormatter={(v) => v.toFixed(1) + "%"}
                 width={50}
               />
-              <Tooltip content={<CustomTooltip />} cursor={{ stroke: "#F59E0B", strokeOpacity: 0.3 }} />
+              <Tooltip content={<CustomTooltip />} cursor={{ stroke: "#FFFFFF", strokeOpacity: 0.3 }} />
               <Area
                 type="monotone"
                 dataKey="rate"
-                stroke="#F59E0B"
+                stroke="#FFFFFF"
                 strokeWidth={2}
                 fill="url(#lrmGrad)"
-                dot={{ r: 4, fill: "#F59E0B", strokeWidth: 0 }}
-                activeDot={{ r: 6, fill: "#F59E0B", stroke: "#ffffff", strokeWidth: 2 }}
+                dot={{ r: 4, fill: "#FFFFFF", strokeWidth: 0 }}
+                activeDot={{ r: 6, fill: "#FFFFFF", stroke: "#031D38", strokeWidth: 2 }}
               >
                 <LabelList dataKey="rate" position="top" offset={10} formatter={(v) => v.toFixed(2) + "%"} style={{ fontSize: 11, fill: "#FFFFFF", fontWeight: 600 }} />
               </Area>
             </AreaChart>
           </ResponsiveContainer>
+          </div>
           {lrm?.updatedAt && (
             <div className="text-[9px] text-text-dim text-right mt-1">
               Datos actualizados: {new Date(lrm.updatedAt).toLocaleDateString("es-UY")}
@@ -241,16 +251,18 @@ export default function LRMPanel() {
 
       {/* BCU Calendar */}
       <div className="mt-5 border-t border-border pt-4">
-        <div className="flex justify-between items-center mb-3">
-          <span className="text-[20px] font-semibold text-white">Calendario de Licitaciones BCU</span>
+        <div className="flex items-center gap-2.5 mb-3">
+          <span className="w-[3px] h-3.5 rounded-full bg-accent" />
+          <span className="text-[13px] font-bold text-accent uppercase tracking-[0.15em]">Calendario de Licitaciones BCU</span>
         </div>
         {calendar && calendar.length > 0 ? (
-          <table className="w-full">
+          <div className="rounded-md overflow-hidden border border-border">
+          <table className="w-full" style={{ background: "#000000" }}>
             <thead>
               <tr style={{ backgroundColor: "#0d0d1a" }}>
-                <th className="px-3 py-2.5 text-left text-xs font-bold text-white uppercase tracking-wide">Fecha Lic.</th>
-                <th className="px-3 py-2.5 text-left text-xs font-bold text-white uppercase tracking-wide">Fecha Venc.</th>
-                <th className="px-3 py-2.5 text-center text-xs font-bold text-white uppercase tracking-wide">Plazo</th>
+                <th className="px-3 py-2.5 text-left text-[11px] font-bold text-[#94A3B8] uppercase tracking-wide border-r border-white/10">Fecha Lic.</th>
+                <th className="px-3 py-2.5 text-right text-[11px] font-bold text-[#94A3B8] uppercase tracking-wide border-r border-white/10">Fecha Venc.</th>
+                <th className="px-3 py-2.5 text-right text-[11px] font-bold text-[#94A3B8] uppercase tracking-wide">Plazo</th>
               </tr>
             </thead>
             <tbody>
@@ -270,18 +282,19 @@ export default function LRMPanel() {
                 return (
                   <React.Fragment key={i}>
                     {weekBreak && (
-                      <tr><td colSpan={3} style={{ height: 8, background: "#1E293B", padding: 0, border: "none" }} /></tr>
+                      <tr><td colSpan={3} style={{ height: 8, background: "#0d0d1a", padding: 0, border: "none" }} /></tr>
                     )}
-                    <tr className={`border-b border-border ${i % 2 === 0 ? "" : "bg-white/[0.01]"}`}>
-                      <td className="px-3 py-2 text-xs text-white font-mono">{item.fechaLicitacion}</td>
-                      <td className="px-3 py-2 text-xs text-white font-mono">{item.fechaVencimiento}</td>
-                      <td className="px-3 py-2 text-center text-xs text-white font-mono">{item.plazo}</td>
+                    <tr className="border-b border-white/5 hover:bg-[#1a2f52]">
+                      <td className="px-3 py-1.5 text-xs text-price font-mono border-r border-white/5">{item.fechaLicitacion}</td>
+                      <td className="px-3 py-1.5 text-right text-xs text-white font-mono border-r border-white/5">{item.fechaVencimiento}</td>
+                      <td className="px-3 py-1.5 text-right text-xs text-white font-mono">{item.plazo}</td>
                     </tr>
                   </React.Fragment>
                 );
               })}
             </tbody>
           </table>
+          </div>
         ) : calendar && calendar.length === 0 ? (
           <div className="text-xs text-text-dim">No hay licitaciones programadas.</div>
         ) : (

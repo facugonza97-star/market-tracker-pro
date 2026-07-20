@@ -22,6 +22,10 @@ module.exports = {
         pos: '#4AF6C3',
         neg: '#FF433D',
         price: '#F8A11E',
+        'bbg-red': '#880F1D',
+        'bbg-navy': '#031D38',
+        'bbg-black': '#000000',
+        'bbg-khaki': '#6b5a3a',
         gold: '#D4A957',
       },
       fontFamily: {

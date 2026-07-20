@@ -428,7 +428,7 @@ function TradeTicket({ bond, activeConfig, onClose }) {
       <div onClick={e => e.stopPropagation()} style={{ backgroundColor: "#0F1520", border: "1px solid #2A3A50", borderRadius: 12, width: 480, maxHeight: "90vh", overflowY: "auto" }}>
 
         {/* Header */}
-        <div style={{ background: "#8B1A1A", padding: "12px 20px", borderRadius: "12px 12px 0 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ background: "#880F1D", padding: "12px 20px", borderRadius: "12px 12px 0 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ color: "white", fontWeight: 700, fontSize: 13, letterSpacing: 0.5 }}>TICKET DE OPERACIÓN</div>
             <div style={{ color: "#E8C9C9", fontSize: 10, marginTop: 2 }}>Gastón Bengochea Corredor de Bolsa</div>

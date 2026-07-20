@@ -52,8 +52,11 @@ export default function YieldCurve({ treasury, full }) {
 
   return (
     <div className="bg-card border border-border rounded-xl p-5">
-      <div className="flex justify-between items-baseline mb-4">
-        <span className="text-[20px] font-semibold text-white">🇺🇸 US Treasury Yield Curve</span>
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2.5">
+          <span className="w-[3px] h-3.5 rounded-full bg-accent" />
+          <span className="text-[13px] font-bold text-accent uppercase tracking-[0.15em]">🇺🇸 US Treasury Yield Curve</span>
+        </div>
         <span className="text-xs text-text-dim">All maturities</span>
       </div>
       <div style={{ background: "#000000", borderRadius: 8, padding: "8px 4px" }}>
