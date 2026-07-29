@@ -128,11 +128,13 @@ export default function Home() {
           <SummaryCards quotes={quotes} treasury={treasury} macro={macro} />
           <ForexStrip forex={forex} />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <YieldCurve treasury={treasury} />
+            <div className="space-y-6">
+              <YieldCurve treasury={treasury} />
+              <CreditSpreads />
+            </div>
             <LRMPanel />
           </div>
           <EconCalendar />
-          <CreditSpreads />
         </div>
       )}
 

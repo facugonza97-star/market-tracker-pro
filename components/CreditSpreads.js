@@ -38,22 +38,20 @@ export default function CreditSpreads() {
       ) : (
         <>
           <div className="overflow-x-auto rounded-md border border-border">
-            <table className="w-full min-w-[520px]" style={{ background: "#000000", borderCollapse: "collapse" }}>
+            <table className="w-full min-w-[320px]" style={{ background: "#000000", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#0d0d1a" }}>
                   <th className={`${th} text-left border-r border-white/10`}>Categoría</th>
-                  <th className={`${th} text-right border-r border-white/10`}>Spread (bps)</th>
-                  <th className={`${th} text-left`}>Fuente</th>
+                  <th className={`${th} text-right`}>Spread (bps)</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r, i) => (
                   <tr key={i} className="border-b border-white/5 hover:bg-[#1a2f52]">
                     <td className="px-3 py-1.5 text-[13px] text-price border-r border-white/5">{r.category}</td>
-                    <td className="px-3 py-1.5 text-right text-[15px] text-white font-mono tabular-nums border-r border-white/5">
+                    <td className="px-3 py-1.5 text-right text-[15px] text-white font-mono tabular-nums">
                       {r.bps === null || r.bps === undefined ? "—" : r.bps}
                     </td>
-                    <td className="px-3 py-1.5 text-[11px] text-text-sec font-mono whitespace-nowrap">{r.source}</td>
                   </tr>
                 ))}
               </tbody>
