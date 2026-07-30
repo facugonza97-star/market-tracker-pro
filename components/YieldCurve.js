@@ -140,8 +140,24 @@ export default function YieldCurve({ treasury, full }) {
             dot={{ r: 4, fill: "#FFFFFF", strokeWidth: 0 }}
             activeDot={{ r: 6, fill: "#FFFFFF", stroke: "#132A4D", strokeWidth: 2 }}
           >
-            {!comparing && (
+            {!comparing ? (
               <LabelList dataKey="rate" position="top" offset={10} formatter={(v) => v.toFixed(2) + "%"} style={{ fontSize: 11, fill: "#FFFFFF", fontWeight: 600 }} />
+            ) : (
+              <LabelList
+                content={(props) => {
+                  const { x, y, index } = props;
+                  const p = data[index];
+                  if (!p || p.rate == null || p.ratePrev == null) return null;
+                  const bps = Math.round((p.rate - p.ratePrev) * 100);
+                  const color = bps > 0 ? "#4AF6C3" : bps < 0 ? "#FF433D" : "#CBD5E0";
+                  const txt = (bps > 0 ? "+" : "") + bps + "bp";
+                  return (
+                    <text x={x} y={y + 16} textAnchor="middle" fontSize={9} fill={color} fillOpacity={0.5}>
+                      {txt}
+                    </text>
+                  );
+                }}
+              />
             )}
           </Area>
         </AreaChart>
