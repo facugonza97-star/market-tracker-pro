@@ -1,5 +1,8 @@
 "use client";
+import { useState } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from "recharts";
+
+const PREV_COLOR = "#5B8DEF";
 
 const MATURITIES = [
   { key: "month1", label: "1M" },
@@ -17,6 +20,9 @@ const MATURITIES = [
 
 function CustomTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
+  // Stacked values per series (Actual / 1 Año Atrás), each in its own color.
+  const order = { rate: 0, ratePrev: 1 };
+  const rows = [...payload].sort((a, b) => (order[a.dataKey] ?? 9) - (order[b.dataKey] ?? 9));
   return (
     <div style={{
       background: "#0F1520",
@@ -24,23 +30,36 @@ function CustomTooltip({ active, payload, label }) {
       borderRadius: 8,
       padding: "8px 12px",
     }}>
-      <div style={{ color: "#94A3B8", fontSize: 11, marginBottom: 2 }}>{label}</div>
-      <div style={{ color: "#ffffff", fontSize: 15, fontWeight: 600, fontFamily: "monospace" }}>
-        {payload[0].value.toFixed(2)}%
-      </div>
+      <div style={{ color: "#94A3B8", fontSize: 11, marginBottom: 4 }}>{label}</div>
+      {rows.map((p, i) => (
+        <div key={p.dataKey} style={{ display: "flex", alignItems: "center", gap: 8, marginTop: i > 0 ? 4 : 0 }}>
+          <span style={{ color: "#94A3B8", fontSize: 11, minWidth: 78 }}>
+            {p.dataKey === "ratePrev" ? "1 Año Atrás" : "Actual"}
+          </span>
+          <span style={{ color: p.color, fontSize: 14, fontWeight: 600, fontFamily: "monospace" }}>
+            {p.value != null ? p.value.toFixed(2) + "%" : "—"}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
 
 export default function YieldCurve({ treasury, full }) {
+  const [compare, setCompare] = useState(false);
   if (!treasury) return null;
+
+  const yearAgo = treasury._yearAgo || null;
+  const hasYearAgo = !!yearAgo;
 
   const data = MATURITIES.map((m) => ({
     mat: m.label,
-    rate: treasury[m.key] ? parseFloat(treasury[m.key]) : null,
+    rate: treasury[m.key] != null ? parseFloat(treasury[m.key]) : null,
+    ratePrev: yearAgo && yearAgo[m.key] != null ? parseFloat(yearAgo[m.key]) : null,
   })).filter((d) => d.rate !== null);
 
-  const rates = data.map((d) => d.rate);
+  const comparing = compare && hasYearAgo;
+  const rates = data.flatMap((d) => (comparing ? [d.rate, d.ratePrev] : [d.rate])).filter((v) => v != null);
   const minRate = Math.floor(Math.min(...rates) * 10) / 10 - 0.2;
   const maxRate = Math.ceil(Math.max(...rates) * 10) / 10 + 0.4;
 
@@ -57,7 +76,20 @@ export default function YieldCurve({ treasury, full }) {
           <span className="w-[3px] h-3.5 rounded-full bg-accent" />
           <span className="text-[13px] font-bold text-accent uppercase tracking-[0.15em]">🇺🇸 US Treasury Yield Curve</span>
         </div>
-        <span className="text-xs text-text-dim">All maturities</span>
+        {hasYearAgo ? (
+          <button
+            onClick={() => setCompare((c) => !c)}
+            className={`px-3 py-1.5 rounded text-xs font-semibold transition border ${
+              comparing
+                ? "bg-white/10 border-white/30 text-white"
+                : "bg-card border-border text-text-sec hover:text-white"
+            }`}
+          >
+            1 Año Atrás
+          </button>
+        ) : (
+          <span className="text-xs text-text-dim">All maturities</span>
+        )}
       </div>
       <div style={{ background: "#000000", borderRadius: 8, padding: "8px 4px" }}>
       <ResponsiveContainer width="100%" height={height}>
@@ -84,16 +116,33 @@ export default function YieldCurve({ treasury, full }) {
             width={50}
           />
           <Tooltip content={<CustomTooltip />} cursor={{ stroke: "#5B8DEF", strokeOpacity: 0.3 }} />
+          {comparing && (
+            <Area
+              type="monotone"
+              dataKey="ratePrev"
+              name="1 Año Atrás"
+              stroke={PREV_COLOR}
+              strokeWidth={2}
+              strokeDasharray="6 3"
+              fill="none"
+              dot={{ r: 3, fill: PREV_COLOR, strokeWidth: 0 }}
+              activeDot={{ r: 5, fill: PREV_COLOR, stroke: "#132A4D", strokeWidth: 2 }}
+              connectNulls
+            />
+          )}
           <Area
             type="monotone"
             dataKey="rate"
+            name="Actual"
             stroke="#FFFFFF"
             strokeWidth={2}
             fill="url(#yieldGrad)"
             dot={{ r: 4, fill: "#FFFFFF", strokeWidth: 0 }}
             activeDot={{ r: 6, fill: "#FFFFFF", stroke: "#132A4D", strokeWidth: 2 }}
           >
-            <LabelList dataKey="rate" position="top" offset={10} formatter={(v) => v.toFixed(2) + "%"} style={{ fontSize: 11, fill: "#FFFFFF", fontWeight: 600 }} />
+            {!comparing && (
+              <LabelList dataKey="rate" position="top" offset={10} formatter={(v) => v.toFixed(2) + "%"} style={{ fontSize: 11, fill: "#FFFFFF", fontWeight: 600 }} />
+            )}
           </Area>
         </AreaChart>
       </ResponsiveContainer>
