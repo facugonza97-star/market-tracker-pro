@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
+import YahooFinance from "yahoo-finance2";
 
 export const dynamic = "force-dynamic";
 
-const API_KEY = process.env.FMP_API_KEY;
-const STABLE = "https://financialmodelingprep.com/stable";
+// yahoo-finance2 v3 must be instantiated (never call .chart/.quote on the class).
+const yahoo = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
 // 60% MSCI ACWI (ACWI) + 40% Bloomberg Global Aggregate (BNDW proxy), rebalanced daily.
+// Uses ADJUSTED close (total return: dividends/distributions + splits reinvested).
+// FMP's EOD endpoint only exposes nominal close, which badly understates BNDW's
+// total return (its monthly distributions drop the nominal price permanently),
+// so both series come from Yahoo's adjusted close.
 const W_ACWI = 0.6;
 const W_BNDW = 0.4;
 
@@ -14,21 +19,16 @@ const CORS = {
   "Access-Control-Allow-Methods": "GET",
 };
 
-// Cache the computed series (daily data — no need to refresh often).
 let cache = { data: null, timestamp: 0 };
 const CACHE_TTL = 12 * 3600 * 1000; // 12h
 
-async function fetchEOD(symbol) {
-  const res = await fetch(
-    `${STABLE}/historical-price-eod/full?symbol=${symbol}&from=2015-01-01&apikey=${API_KEY}`,
-    { next: { revalidate: 43200 } }
-  );
-  if (!res.ok) return null;
-  const data = await res.json();
-  if (!Array.isArray(data)) return null;
+async function fetchAdjClose(symbol) {
+  const r = await yahoo.chart(symbol, { period1: new Date("2015-01-01"), interval: "1d" });
   const map = {};
-  for (const r of data) if (r?.date && r.close != null) map[r.date] = r.close;
-  return map;
+  for (const q of r?.quotes || []) {
+    if (q?.date && q.adjclose != null) map[q.date.toISOString().slice(0, 10)] = q.adjclose;
+  }
+  return Object.keys(map).length ? map : null;
 }
 
 function buildSeries(acwi, bndw) {
@@ -60,7 +60,7 @@ export async function GET(req) {
     series = cache.data;
   } else {
     try {
-      const [acwi, bndw] = await Promise.all([fetchEOD("ACWI"), fetchEOD("BNDW")]);
+      const [acwi, bndw] = await Promise.all([fetchAdjClose("ACWI"), fetchAdjClose("BNDW")]);
       if (!acwi || !bndw) throw new Error("history unavailable");
       series = buildSeries(acwi, bndw);
       if (!series.length) throw new Error("empty series");
