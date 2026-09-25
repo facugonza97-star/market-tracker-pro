@@ -1,16 +1,14 @@
 import { NextResponse } from "next/server";
-import YahooFinance from "yahoo-finance2";
 
 export const dynamic = "force-dynamic";
 
-// yahoo-finance2 v3 must be instantiated (never call .chart/.quote on the class).
-const yahoo = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
+const API_KEY = process.env.FMP_API_KEY;
+const STABLE = "https://financialmodelingprep.com/stable";
 
 // 60% MSCI ACWI (ACWI) + 40% Bloomberg Global Aggregate (BNDW proxy), rebalanced daily.
-// Uses ADJUSTED close (total return: dividends/distributions + splits reinvested).
-// FMP's EOD endpoint only exposes nominal close, which badly understates BNDW's
-// total return (its monthly distributions drop the nominal price permanently),
-// so both series come from Yahoo's adjusted close.
+// Uses FMP's dividend-adjusted close (total return: dividends/distributions + splits
+// reinvested). BNDW's monthly distributions permanently drop its nominal price, so the
+// plain close badly understates its total return — the dividend-adjusted series fixes that.
 const W_ACWI = 0.6;
 const W_BNDW = 0.4;
 
@@ -23,11 +21,15 @@ let cache = { data: null, timestamp: 0 };
 const CACHE_TTL = 12 * 3600 * 1000; // 12h
 
 async function fetchAdjClose(symbol) {
-  const r = await yahoo.chart(symbol, { period1: new Date("2015-01-01"), interval: "1d" });
+  const res = await fetch(
+    `${STABLE}/historical-price-eod/dividend-adjusted?symbol=${symbol}&from=2015-01-01&apikey=${API_KEY}`,
+    { next: { revalidate: 43200 } }
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (!Array.isArray(data)) return null;
   const map = {};
-  for (const q of r?.quotes || []) {
-    if (q?.date && q.adjclose != null) map[q.date.toISOString().slice(0, 10)] = q.adjclose;
-  }
+  for (const r of data) if (r?.date && r.adjClose != null) map[r.date] = r.adjClose;
   return Object.keys(map).length ? map : null;
 }
 
