@@ -15,7 +15,6 @@ import PongGame from "@/components/PongGame";
 import PongPVP from "@/components/PongPVP";
 import MacroPanel from "@/components/MacroPanel";
 import CreditSpreads from "@/components/CreditSpreads";
-import FedWatch from "@/components/FedWatch";
 import Header from "@/components/Header";
 
 const TABS = ["Overview", "Tracker", "Bonos", "Forex", "Burbujas", "Macro"];
@@ -135,7 +134,6 @@ export default function Home() {
             </div>
             <LRMPanel />
           </div>
-          <FedWatch />
           <EconCalendar />
         </div>
       )}
