@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, LineChart, Line, ReferenceLine, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 const PERIODS = [
   { key: "3M", days: 90 },
@@ -84,6 +84,81 @@ function SpreadChart({ cat, days }) {
   );
 }
 
+const IG_COLOR = "#5B8DEF";
+const HY_COLOR = "#FFFFFF";
+
+function CompareTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  const p = payload[0].payload;
+  return (
+    <div style={{ background: "#0F1520", border: "1px solid #2A3A50", borderRadius: 8, padding: "6px 10px", fontFamily: "'Source Code Pro',monospace" }}>
+      <div style={{ color: "#94A3B8", fontSize: 10, marginBottom: 3 }}>{fmtDate(p.date)}</div>
+      <div style={{ color: HY_COLOR, fontSize: 12, fontWeight: 600 }}>
+        US HY {p.hy?.toFixed(1)} <span style={{ color: "#94A3B8", fontWeight: 400 }}>({p.hyBps} bp)</span>
+      </div>
+      <div style={{ color: IG_COLOR, fontSize: 12, fontWeight: 600, marginTop: 2 }}>
+        US IG {p.ig?.toFixed(1)} <span style={{ color: "#94A3B8", fontWeight: 400 }}>({p.igBps} bp)</span>
+      </div>
+    </div>
+  );
+}
+
+function CompareChart({ hist, days }) {
+  const data = useMemo(() => {
+    const ig = hist.find((c) => c.id === "usig");
+    const hy = hist.find((c) => c.id === "ushy");
+    if (!ig || !hy) return [];
+    const igS = sliceByPeriod(ig.data, days);
+    const hyS = sliceByPeriod(hy.data, days);
+    const hyMap = new Map(hyS.map((p) => [p.date, p.bps]));
+    const base = { ig: igS[0]?.bps, hy: hyMap.get(igS[0]?.date) };
+    if (!base.ig || !base.hy) return [];
+    const out = [];
+    for (const p of igS) {
+      const hyBps = hyMap.get(p.date);
+      if (hyBps == null) continue;
+      out.push({
+        date: p.date,
+        igBps: p.bps,
+        hyBps,
+        ig: +((p.bps / base.ig) * 100).toFixed(2),
+        hy: +((hyBps / base.hy) * 100).toFixed(2),
+      });
+    }
+    return out;
+  }, [hist, days]);
+
+  if (!data.length) return null;
+
+  return (
+    <div className="border border-border rounded-md p-3 mt-3">
+      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <span className="w-[3px] h-3 rounded-full bg-accent" />
+          <span className="text-[11px] font-bold text-accent uppercase tracking-[0.12em]">IG vs HY (base 100)</span>
+        </div>
+        <div className="flex items-center gap-3 text-[10px] text-text-sec font-mono">
+          <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-[2px]" style={{ background: HY_COLOR }} />US HY</span>
+          <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-[2px]" style={{ background: IG_COLOR }} />US IG</span>
+        </div>
+      </div>
+      <div style={{ background: "#000000", borderRadius: 6 }}>
+        <ResponsiveContainer width="100%" height={170}>
+          <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="2 2" stroke="#FFFFFF" strokeOpacity={0.15} />
+            <XAxis dataKey="date" tick={{ fill: "#94A3B8", fontSize: 9, fontFamily: "'Source Code Pro',monospace" }} tickLine={false} axisLine={{ stroke: "#1E2D40" }} minTickGap={50} tickFormatter={fmtDate} />
+            <YAxis tick={{ fill: "#94A3B8", fontSize: 9, fontFamily: "'Source Code Pro',monospace" }} tickLine={false} axisLine={false} width={34} domain={["dataMin", "dataMax"]} />
+            <ReferenceLine y={100} stroke="#FFFFFF" strokeOpacity={0.25} strokeDasharray="4 4" />
+            <Tooltip content={<CompareTooltip />} cursor={{ stroke: "#5B8DEF", strokeOpacity: 0.3 }} />
+            <Line type="monotone" dataKey="hy" stroke={HY_COLOR} strokeWidth={1.5} dot={false} activeDot={{ r: 3, fill: HY_COLOR, stroke: "#132A4D", strokeWidth: 1.5 }} />
+            <Line type="monotone" dataKey="ig" stroke={IG_COLOR} strokeWidth={1.5} dot={false} activeDot={{ r: 3, fill: IG_COLOR, stroke: "#132A4D", strokeWidth: 1.5 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
 export default function CreditSpreads() {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(false);
@@ -161,6 +236,7 @@ export default function CreditSpreads() {
                   <SpreadChart key={cat.id} cat={cat} days={days} />
                 ))}
               </div>
+              <CompareChart hist={hist} days={days} />
             </>
           )}
 
