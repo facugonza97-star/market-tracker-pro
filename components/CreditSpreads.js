@@ -1,28 +1,110 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+
+const PERIODS = [
+  { key: "3M", days: 90 },
+  { key: "6M", days: 182 },
+  { key: "1A", days: 365 },
+  { key: "3A", days: 100000 }, // 3A = Máx (ICE capped at ~3 years)
+];
+
+function sliceByPeriod(data, days) {
+  if (!data?.length) return [];
+  const lastDate = new Date(data[data.length - 1].date);
+  const cutoff = new Date(lastDate.getTime() - days * 86400000);
+  return data.filter((p) => new Date(p.date) >= cutoff);
+}
+
+function fmtDate(d) {
+  const dt = new Date(d);
+  return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" });
+}
+
+function ChartTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  const p = payload[0].payload;
+  return (
+    <div style={{ background: "#0F1520", border: "1px solid #2A3A50", borderRadius: 8, padding: "6px 10px", fontFamily: "'Source Code Pro',monospace" }}>
+      <div style={{ color: "#94A3B8", fontSize: 10 }}>{fmtDate(p.date)}</div>
+      <div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>{p.bps} bps</div>
+    </div>
+  );
+}
+
+function SpreadChart({ cat, days }) {
+  const data = useMemo(() => sliceByPeriod(cat.data, days), [cat.data, days]);
+  if (!data.length) {
+    return (
+      <div className="border border-border rounded-md p-3">
+        <div className="text-[11px] font-bold text-accent uppercase tracking-[0.12em] mb-2">{cat.name}</div>
+        <div className="text-[11px] text-text-dim h-[120px] flex items-center justify-center">Sin datos</div>
+      </div>
+    );
+  }
+  const vals = data.map((p) => p.bps);
+  const cur = vals[vals.length - 1];
+  const chg = Math.round(cur - vals[0]);
+  const min = Math.min(...vals), max = Math.max(...vals);
+
+  return (
+    <div className="border border-border rounded-md p-3">
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className="w-[3px] h-3 rounded-full bg-accent" />
+        <span className="text-[11px] font-bold text-accent uppercase tracking-[0.12em]">{cat.name}</span>
+      </div>
+      <div className="flex items-baseline justify-between mb-1.5">
+        <span className="text-[18px] font-mono tabular-nums text-price font-semibold">{cur}<span className="text-[11px] text-text-dim ml-1">bps</span></span>
+        <span className={`text-[11px] font-mono tabular-nums font-semibold ${chg > 0 ? "text-neg" : chg < 0 ? "text-pos" : "text-text-dim"}`}>
+          {chg > 0 ? "+" : ""}{chg} bps
+        </span>
+      </div>
+      <div style={{ background: "#000000", borderRadius: 6 }}>
+        <ResponsiveContainer width="100%" height={120}>
+          <AreaChart data={data} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id={`sg-${cat.id}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#031D38" stopOpacity={1} />
+                <stop offset="100%" stopColor="#031D38" stopOpacity={1} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="2 2" stroke="#FFFFFF" strokeOpacity={0.15} />
+            <XAxis dataKey="date" tick={{ fill: "#94A3B8", fontSize: 9, fontFamily: "'Source Code Pro',monospace" }} tickLine={false} axisLine={{ stroke: "#1E2D40" }} minTickGap={40} tickFormatter={fmtDate} />
+            <YAxis tick={{ fill: "#94A3B8", fontSize: 9, fontFamily: "'Source Code Pro',monospace" }} tickLine={false} axisLine={false} width={32} domain={["dataMin", "dataMax"]} />
+            <Tooltip content={<ChartTooltip />} cursor={{ stroke: "#5B8DEF", strokeOpacity: 0.3 }} />
+            <Area type="monotone" dataKey="bps" stroke="#FFFFFF" strokeWidth={1.5} fill={`url(#sg-${cat.id})`} dot={false} activeDot={{ r: 3, fill: "#FFFFFF", stroke: "#132A4D", strokeWidth: 1.5 }} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="flex justify-between text-[10px] text-text-sec font-mono mt-1.5">
+        <span>mín {min}</span>
+        <span>máx {max}</span>
+      </div>
+    </div>
+  );
+}
 
 export default function CreditSpreads() {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(false);
+  const [hist, setHist] = useState(null);
+  const [period, setPeriod] = useState("1A");
 
   useEffect(() => {
     let cancelled = false;
     fetch("/api/spreads")
       .then((r) => r.json())
-      .then((d) => {
-        if (cancelled) return;
-        if (d && Array.isArray(d.rows)) setRows(d.rows);
-        else setError(true);
-      })
-      .catch(() => {
-        if (!cancelled) setError(true);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .then((d) => { if (!cancelled) (d && Array.isArray(d.rows)) ? setRows(d.rows) : setError(true); })
+      .catch(() => { if (!cancelled) setError(true); });
+    fetch("/api/spreads-history")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d && Array.isArray(d.categories)) setHist(d.categories); })
+      .catch(() => {});
+    return () => { cancelled = true; };
   }, []);
 
   const th = "px-3 py-2.5 text-[11px] font-bold text-[#94A3B8] uppercase tracking-wide";
+  const days = PERIODS.find((p) => p.key === period)?.days ?? 365;
 
   return (
     <div className="bg-card border border-border rounded-xl p-5">
@@ -57,8 +139,34 @@ export default function CreditSpreads() {
               </tbody>
             </table>
           </div>
-          <div className="text-[10px] text-text-dim mt-2.5 leading-relaxed">
-            Spreads OAS vía ICE BofA Indices (FRED). Global IG/HY, US Munis, Canada IG, Europe IG no disponibles sin Bloomberg — no incluidos.
+
+          {hist && hist.length > 0 && (
+            <>
+              <div className="flex items-center gap-1 mt-4 mb-3">
+                {PERIODS.map((p) => (
+                  <button
+                    key={p.key}
+                    onClick={() => setPeriod(p.key)}
+                    className={`px-2.5 py-1 rounded text-[11px] font-semibold transition border ${
+                      period === p.key ? "bg-white/10 border-white/30 text-white" : "bg-card border-border text-text-sec hover:text-white"
+                    }`}
+                  >
+                    {p.key}
+                  </button>
+                ))}
+                <span className="text-[10px] text-text-dim ml-1">3A = máx</span>
+              </div>
+              <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+                {hist.map((cat) => (
+                  <SpreadChart key={cat.id} cat={cat} days={days} />
+                ))}
+              </div>
+            </>
+          )}
+
+          <div className="text-[10px] text-text-dim mt-3 leading-relaxed">
+            Spreads OAS vía ICE BofA Indices (FRED). Historia ICE BofA limitada a ~3 años por licencia de FRED.
+            Global IG/HY, US Munis, Canada IG, Europe IG no disponibles sin Bloomberg — no incluidos.
           </div>
         </>
       )}
