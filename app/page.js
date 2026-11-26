@@ -15,9 +15,10 @@ import PongGame from "@/components/PongGame";
 import PongPVP from "@/components/PongPVP";
 import MacroPanel from "@/components/MacroPanel";
 import CreditSpreads from "@/components/CreditSpreads";
+import CountryReturns from "@/components/CountryReturns";
 import Header from "@/components/Header";
 
-const TABS = ["Overview", "Tracker", "Bonos", "Forex", "Burbujas", "Macro"];
+const TABS = ["Overview", "Tracker", "Bonos", "Forex", "Burbujas", "Macro", "Países"];
 
 export default function Home() {
   const { user } = useUser();
@@ -187,6 +188,10 @@ export default function Home() {
 
       {!loading && tab === "Macro" && (
         <MacroPanel />
+      )}
+
+      {!loading && tab === "Países" && (
+        <CountryReturns />
       )}
 
       {!loading && tab === "Mi Tracker" && user && (
