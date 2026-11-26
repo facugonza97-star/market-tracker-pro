@@ -16,7 +16,6 @@ import PongPVP from "@/components/PongPVP";
 import MacroPanel from "@/components/MacroPanel";
 import CreditSpreads from "@/components/CreditSpreads";
 import FedWatch from "@/components/FedWatch";
-import SilverCapture from "@/components/SilverCapture";
 import Header from "@/components/Header";
 
 const TABS = ["Overview", "Tracker", "Bonos", "Forex", "Burbujas", "Macro"];
@@ -137,7 +136,6 @@ export default function Home() {
             <LRMPanel />
           </div>
           <FedWatch />
-          <SilverCapture />
           <EconCalendar />
         </div>
       )}
