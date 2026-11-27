@@ -14,6 +14,7 @@ import {
 } from "@/lib/labStats";
 
 const AMBER = "#F8A11E";
+const NEG_C = "#FF433D";
 const ACCENT = "#5B8DEF";
 const MINT = "#4AF6C3";
 const VIOLET = "#B48EF7";
@@ -95,6 +96,11 @@ export default function Laboratorio() {
   const [hidden, setHidden] = useState(new Set());
   const [worstTicker, setWorstTicker] = useState(null);
 
+  // tickers that actually have data and drive the calculations
+  const active = useMemo(() => selected.filter((t) => seriesMap[t]), [selected, seriesMap]);
+  const ready = selected.filter((t) => !failed.has(t)).every((t) => seriesMap[t]) && active.length > 0;
+  const nameOf = (t) => names[t] || labName(t);
+
   // restore custom (off-universe) tickers from localStorage on mount
   useEffect(() => {
     const custom = loadCustom();
@@ -147,11 +153,6 @@ export default function Laboratorio() {
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
-
-  // tickers that actually have data and drive the calculations
-  const active = useMemo(() => selected.filter((t) => seriesMap[t]), [selected, seriesMap]);
-  const ready = selected.filter((t) => !failed.has(t)).every((t) => seriesMap[t]) && active.length > 0;
-  const nameOf = (t) => names[t] || labName(t);
 
   const addTicker = (t) => {
     if (!isLabTicker(t) || selected.includes(t) || selected.length >= MAX_ASSETS) return;
@@ -618,5 +619,3 @@ function DdView({ ddAssets, underwaterData, visibleDD, singleDD, hidden, setHidd
     </>
   );
 }
-
-const NEG_C = "#FF433D";
