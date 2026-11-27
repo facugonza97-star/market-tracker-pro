@@ -19,10 +19,11 @@ const MOV_PERIODS = [
 const BENCH_ORDER = ["VT", "SPY", "ACWX", "IEFA", "IEMG", "VGK", "EZU"];
 
 // Layout widths (px) — kept in sync with the reference-line overlay offsets.
-const W_RANK = 28;
-const W_NAME = 132;
-const W_TKR = 44;
-const W_VAL = 54;
+const W_RANK = 32;
+const W_NAME = 152;
+const W_TKR = 52;
+const W_VAL = 62;
+const ROW_H = 30;
 
 function fmt(v) {
   if (v === null || v === undefined) return "-";
@@ -121,9 +122,9 @@ export default function CountryReturns() {
       <style>{`
         .cr-row:hover { background:#1a2f52; }
         @media (max-width: 640px) {
-          .cr-name { width:92px !important; }
+          .cr-name { width:110px !important; }
           .cr-tkr { display:none !important; }
-          .cr-refwrap { margin-left:120px !important; }
+          .cr-refwrap { margin-left:142px !important; }
         }
       `}</style>
 
@@ -148,7 +149,7 @@ export default function CountryReturns() {
                 <button
                   key={p.key}
                   onClick={() => setPeriodKey(p.key)}
-                  className="px-2.5 py-1 rounded text-[11px] font-semibold transition border"
+                  className="px-3 py-1.5 rounded text-[13px] font-semibold transition border"
                   style={{
                     borderColor: on ? "rgba(248,161,30,.6)" : "#1C2536",
                     background: on ? "rgba(248,161,30,.12)" : "#0d0d1a",
@@ -162,11 +163,11 @@ export default function CountryReturns() {
           </div>
 
           {/* Benchmark strip */}
-          <div className="flex flex-wrap gap-x-4 gap-y-1.5 mb-3 px-2.5 py-2 border border-border rounded-md">
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5 mb-3 px-3 py-2.5 border border-border rounded-md">
             {benchStrip.map((b) => {
               const v = valOf(b, period);
               return (
-                <span key={b.ticker} className="text-[11px] font-mono">
+                <span key={b.ticker} className="text-[12px] font-mono">
                   <span className="text-text-sec">{b.name}</span>{" "}
                   <span className="font-semibold" style={{ color: tone(v) }}>{fmt(v)}</span>
                 </span>
@@ -182,7 +183,7 @@ export default function CountryReturns() {
                 <button
                   key={c}
                   onClick={() => setRegion(c)}
-                  className={`px-2.5 py-1 rounded text-[11px] font-semibold transition border ${
+                  className={`px-3 py-1.5 rounded text-[13px] font-semibold transition border ${
                     on ? "bg-white/10 border-white/30 text-white" : "bg-card border-border text-text-sec hover:text-white"
                   }`}
                 >
@@ -194,16 +195,16 @@ export default function CountryReturns() {
 
           {/* Reference labels (EE.UU. / Mundo) aligned over the chart zone */}
           <div
-            className="cr-refwrap relative mb-0.5"
-            style={{ height: 16, marginLeft: W_RANK + W_NAME + W_TKR, marginRight: W_VAL }}
+            className="cr-refwrap relative mb-1"
+            style={{ height: 22, marginLeft: W_RANK + W_NAME + W_TKR, marginRight: W_VAL }}
           >
             {spyX != null && (
-              <span className="absolute font-mono whitespace-nowrap" style={{ top: stagger ? 0 : 2, left: `${spyX}%`, transform: "translateX(-50%)", fontSize: 9, color: AMBER }}>
+              <span className="absolute font-mono whitespace-nowrap" style={{ top: stagger ? 0 : 4, left: `${spyX}%`, transform: "translateX(-50%)", fontSize: 12, color: AMBER }}>
                 EE.UU. {fmt(spyV)}
               </span>
             )}
             {vtX != null && (
-              <span className="absolute font-mono whitespace-nowrap" style={{ top: stagger ? 9 : 2, left: `${vtX}%`, transform: "translateX(-50%)", fontSize: 9, color: "#cbd5e1" }}>
+              <span className="absolute font-mono whitespace-nowrap" style={{ top: stagger ? 11 : 4, left: `${vtX}%`, transform: "translateX(-50%)", fontSize: 12, color: "#cbd5e1" }}>
                 Mundo {fmt(vtV)}
               </span>
             )}
@@ -223,29 +224,29 @@ export default function CountryReturns() {
               const c = tone(v);
               const w = v != null ? (Math.abs(v) / maxAbs) * 50 : 0;
               return (
-                <div key={r.ticker} className="cr-row flex items-center transition-colors" style={{ height: 24 }}>
-                  <div className="font-mono text-right pr-1.5 text-text-sec" style={{ width: W_RANK, fontSize: 10 }}>{i + 1}</div>
-                  <div className="cr-name text-white whitespace-nowrap overflow-hidden text-ellipsis" style={{ width: W_NAME, fontSize: 12 }}>{r.name}</div>
-                  <div className="cr-tkr font-mono text-text-sec" style={{ width: W_TKR, fontSize: 10 }}>{r.ticker}</div>
-                  <div className="relative" style={{ flex: 1, height: 24 }}>
+                <div key={r.ticker} className="cr-row flex items-center transition-colors" style={{ height: ROW_H }}>
+                  <div className="font-mono text-right pr-1.5 text-text-sec" style={{ width: W_RANK, fontSize: 12 }}>{i + 1}</div>
+                  <div className="cr-name text-white whitespace-nowrap overflow-hidden text-ellipsis" style={{ width: W_NAME, fontSize: 15 }}>{r.name}</div>
+                  <div className="cr-tkr font-mono text-text-sec" style={{ width: W_TKR, fontSize: 13 }}>{r.ticker}</div>
+                  <div className="relative" style={{ flex: 1, height: ROW_H }}>
                     {v != null && (
                       <div
                         className="absolute"
                         style={
                           v >= 0
-                            ? { left: "50%", top: "50%", transform: "translateY(-50%)", height: 10, width: `${w}%`, background: c, borderRadius: "0 2px 2px 0" }
-                            : { right: "50%", top: "50%", transform: "translateY(-50%)", height: 10, width: `${w}%`, background: c, borderRadius: "2px 0 0 2px" }
+                            ? { left: "50%", top: "50%", transform: "translateY(-50%)", height: 12, width: `${w}%`, background: c, borderRadius: "0 2px 2px 0" }
+                            : { right: "50%", top: "50%", transform: "translateY(-50%)", height: 12, width: `${w}%`, background: c, borderRadius: "2px 0 0 2px" }
                         }
                       />
                     )}
                   </div>
-                  <div className="text-right font-mono font-semibold" style={{ width: W_VAL, fontSize: 12, color: c }}>{fmt(v)}</div>
+                  <div className="text-right font-mono font-semibold" style={{ width: W_VAL, fontSize: 15, color: c }}>{fmt(v)}</div>
                 </div>
               );
             })}
           </div>
 
-          <div className="text-[10px] text-text-dim mt-3 leading-relaxed">
+          <div className="text-[12px] text-text-dim mt-3 leading-relaxed">
             Retorno total en USD, precio ajustado por dividendos. Datos al {fmtDate(data.lastDataDate)}. ETFs como proxy del mercado de cada país.
           </div>
         </>

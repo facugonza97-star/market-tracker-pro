@@ -18,7 +18,7 @@ import CreditSpreads from "@/components/CreditSpreads";
 import CountryReturns from "@/components/CountryReturns";
 import Header from "@/components/Header";
 
-const TABS = ["Overview", "Tracker", "Bonos", "Forex", "Burbujas", "Macro", "Países"];
+const TABS = ["Overview", "Tracker", "Países", "Bonos", "Forex", "Burbujas", "Macro"];
 
 export default function Home() {
   const { user } = useUser();
