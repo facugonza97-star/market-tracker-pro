@@ -14,7 +14,7 @@ const WEEKLY_PERIODS = new Set(["1A", "3A"]);
 
 const IG_COLOR = "#5B8DEF";
 const HY_COLOR = "#FFFFFF";
-const CHART_H = 230;
+const CHART_H = 260;
 
 function sliceByPeriod(data, days) {
   if (!data?.length) return [];
@@ -303,7 +303,7 @@ export default function CreditSpreads() {
         <div className="text-xs text-text-dim h-40 flex items-center justify-center">No se pudieron cargar los spreads.</div>
       ) : (
         <>
-          <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
+          <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {ordered.map((cat) => (
               <SpreadChart key={cat.id} cat={cat} days={days} periodLabel={period} weekly={weekly} dayAxis={dayAxis} />
             ))}

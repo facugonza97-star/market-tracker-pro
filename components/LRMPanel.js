@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from "recharts";
 
 function printLRMTicket({ efectivo, plazo, tasa, comision, r, fecha }) {
@@ -170,15 +170,10 @@ function CustomTooltip({ active, payload, label }) {
 
 export default function LRMPanel() {
   const [lrm, setLrm] = useState(null);
-  const [calendar, setCalendar] = useState(null);
   const [lrmModal, setLrmModal] = useState(false);
 
   useEffect(() => {
     fetch("/api/lrm").then((r) => r.json()).then(setLrm).catch(() => {});
-    fetch("/api/bcu-calendar").then((r) => r.json()).then((data) => {
-      if (Array.isArray(data)) setCalendar(data);
-      else setCalendar([]);
-    }).catch(() => setCalendar([]));
   }, []);
 
   const curve = lrm?.curve?.filter((d) => d.rate !== null) || [];
@@ -251,59 +246,6 @@ export default function LRMPanel() {
           No hay datos de LRM disponibles
         </div>
       )}
-
-      {/* BCU Calendar */}
-      <div className="mt-5 border-t border-border pt-4">
-        <div className="flex items-center gap-2.5 mb-3">
-          <span className="w-[3px] h-3.5 rounded-full bg-accent" />
-          <span className="text-[13px] font-bold text-accent uppercase tracking-[0.15em]">Calendario de Licitaciones BCU</span>
-        </div>
-        {calendar && calendar.length > 0 ? (
-          <div className="rounded-md overflow-hidden border border-border">
-          <table className="w-full" style={{ background: "#000000" }}>
-            <thead>
-              <tr style={{ backgroundColor: "#0d0d1a" }}>
-                <th className="px-3 py-2.5 text-left text-[11px] font-bold text-[#94A3B8] uppercase tracking-wide border-r border-white/10">Fecha Lic.</th>
-                <th className="px-3 py-2.5 text-right text-[11px] font-bold text-[#94A3B8] uppercase tracking-wide border-r border-white/10">Fecha Venc.</th>
-                <th className="px-3 py-2.5 text-right text-[11px] font-bold text-[#94A3B8] uppercase tracking-wide">Plazo</th>
-              </tr>
-            </thead>
-            <tbody>
-              {calendar.map((item, i) => {
-                const getWeek = (dateStr) => {
-                  const [d, m, y] = dateStr.split("/").map(Number);
-                  const date = new Date(y, m - 1, d);
-                  const startOfYear = new Date(y, 0, 1);
-                  return Math.ceil(((date - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
-                };
-                let weekBreak = false;
-                if (i > 0 && item.fechaLicitacion && calendar[i - 1].fechaLicitacion) {
-                  try {
-                    weekBreak = getWeek(item.fechaLicitacion) !== getWeek(calendar[i - 1].fechaLicitacion);
-                  } catch {}
-                }
-                return (
-                  <React.Fragment key={i}>
-                    {weekBreak && (
-                      <tr><td colSpan={3} style={{ height: 8, background: "#0d0d1a", padding: 0, border: "none" }} /></tr>
-                    )}
-                    <tr className="border-b border-white/5 hover:bg-[#1a2f52]">
-                      <td className="px-3 py-1.5 text-xs text-price font-mono border-r border-white/5">{item.fechaLicitacion}</td>
-                      <td className="px-3 py-1.5 text-right text-xs text-white font-mono border-r border-white/5">{item.fechaVencimiento}</td>
-                      <td className="px-3 py-1.5 text-right text-xs text-white font-mono">{item.plazo}</td>
-                    </tr>
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-          </div>
-        ) : calendar && calendar.length === 0 ? (
-          <div className="text-xs text-text-dim">No hay licitaciones programadas.</div>
-        ) : (
-          <div className="text-xs text-text-dim">Cargando calendario...</div>
-        )}
-      </div>
     </div>
   );
 }

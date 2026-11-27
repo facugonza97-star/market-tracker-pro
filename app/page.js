@@ -128,13 +128,15 @@ export default function Home() {
         <div className="px-8 py-6 space-y-6">
           <SummaryCards quotes={quotes} treasury={treasury} macro={macro} />
           <ForexStrip forex={forex} />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <div className="lg:col-span-3">
               <YieldCurve treasury={treasury} />
-              <CreditSpreads />
             </div>
-            <LRMPanel />
+            <div className="lg:col-span-2">
+              <LRMPanel />
+            </div>
           </div>
+          <CreditSpreads />
           <EconCalendar />
         </div>
       )}
