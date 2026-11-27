@@ -3,11 +3,14 @@ import { useState, useEffect, useMemo } from "react";
 import { AreaChart, Area, LineChart, Line, ReferenceLine, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 const PERIODS = [
+  { key: "1M", days: 30 },
   { key: "3M", days: 90 },
   { key: "6M", days: 182 },
   { key: "1A", days: 365 },
   { key: "3A", days: 100000 }, // 3A = Máx (ICE capped at ~3 years)
 ];
+// For 1A/3A we downsample the daily ICE series to weekly (keeps the look + perf).
+const WEEKLY_PERIODS = new Set(["1A", "3A"]);
 
 const IG_COLOR = "#5B8DEF";
 const HY_COLOR = "#FFFFFF";
@@ -18,6 +21,27 @@ function sliceByPeriod(data, days) {
   const lastDate = new Date(data[data.length - 1].date);
   const cutoff = new Date(lastDate.getTime() - days * 86400000);
   return data.filter((p) => new Date(p.date) >= cutoff);
+}
+
+// ISO-week key; downsample daily rows to one (the last) observation per week.
+function isoWeekKey(dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  const day = dt.getUTCDay() || 7;
+  dt.setUTCDate(dt.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(dt.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((dt - yearStart) / 86400000 + 1) / 7);
+  return `${dt.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+function toWeekly(rows) {
+  const byWeek = new Map();
+  for (const r of rows) byWeek.set(isoWeekKey(r.date), r);
+  return [...byWeek.values()].sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+// Slice to the period, then (for 1A/3A) downsample to weekly.
+function seriesFor(data, days, weekly) {
+  const s = sliceByPeriod(data, days);
+  return weekly ? toWeekly(s) : s;
 }
 
 function fmtDate(d) {
@@ -39,6 +63,21 @@ function monthTicks(data, maxTicks = 6) {
 function fmtMonth(d) {
   const dt = new Date(d);
   return dt.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+}
+
+// X-axis for short periods (1M): ~weekly ticks, evenly spaced, incl. first & last.
+function dayTicks(data, maxTicks = 5) {
+  const n = data.length;
+  if (!n) return [];
+  const step = Math.max(1, Math.ceil(n / maxTicks));
+  const out = [];
+  for (let i = 0; i < n; i += step) out.push(data[i].date);
+  if (out[out.length - 1] !== data[n - 1].date) out.push(data[n - 1].date);
+  return out;
+}
+function fmtDayMonth(d) {
+  const dt = new Date(d);
+  return dt.toLocaleDateString("es-UY", { day: "numeric", month: "short" }).replace(".", "");
 }
 
 // Y-axis: round ticks (5/10/25/…) with a little air above and below.
@@ -79,8 +118,8 @@ function CardHeader({ name, subtitle }) {
   );
 }
 
-function SpreadChart({ cat, days, periodLabel }) {
-  const data = useMemo(() => sliceByPeriod(cat.data, days), [cat.data, days]);
+function SpreadChart({ cat, days, periodLabel, weekly, dayAxis }) {
+  const data = useMemo(() => seriesFor(cat.data, days, weekly), [cat.data, days, weekly]);
   const subtitle = cat.id === "mortgage" ? "(proxy: tasa 30Y menos Treasury 10Y, no es el OAS del índice)" : null;
 
   if (!data.length) {
@@ -96,7 +135,8 @@ function SpreadChart({ cat, days, periodLabel }) {
   const chg = Math.round(cur - vals[0]);
   const min = Math.min(...vals), max = Math.max(...vals);
   const yAxis = niceAxis(min, max);
-  const xTicks = monthTicks(data);
+  const xTicks = dayAxis ? dayTicks(data) : monthTicks(data);
+  const xFmt = dayAxis ? fmtDayMonth : fmtMonth;
 
   return (
     <div className="border border-border rounded-md p-3">
@@ -117,7 +157,7 @@ function SpreadChart({ cat, days, periodLabel }) {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="2 2" stroke="#FFFFFF" strokeOpacity={0.15} />
-            <XAxis dataKey="date" ticks={xTicks} interval={0} tick={{ fill: "#94A3B8", fontSize: 9, fontFamily: "'Source Code Pro',monospace" }} tickLine={false} axisLine={{ stroke: "#1E2D40" }} tickFormatter={fmtMonth} />
+            <XAxis dataKey="date" ticks={xTicks} interval={0} tick={{ fill: "#94A3B8", fontSize: 9, fontFamily: "'Source Code Pro',monospace" }} tickLine={false} axisLine={{ stroke: "#1E2D40" }} tickFormatter={xFmt} />
             <YAxis domain={yAxis.domain} ticks={yAxis.ticks} tick={{ fill: "#94A3B8", fontSize: 9, fontFamily: "'Source Code Pro',monospace" }} tickLine={false} axisLine={false} width={38} />
             <Tooltip content={<ChartTooltip />} cursor={{ stroke: "#5B8DEF", strokeOpacity: 0.3 }} />
             <Area type="monotone" dataKey="bps" stroke="#FFFFFF" strokeWidth={1.5} fill={`url(#sg-${cat.id})`} dot={false} activeDot={{ r: 3, fill: "#FFFFFF", stroke: "#132A4D", strokeWidth: 1.5 }} />
@@ -148,13 +188,13 @@ function CompareTooltip({ active, payload }) {
   );
 }
 
-function CompareChart({ hist, days }) {
+function CompareChart({ hist, days, weekly, dayAxis }) {
   const data = useMemo(() => {
     const ig = hist.find((c) => c.id === "usig");
     const hy = hist.find((c) => c.id === "ushy");
     if (!ig || !hy) return [];
-    const igS = sliceByPeriod(ig.data, days);
-    const hyMap = new Map(sliceByPeriod(hy.data, days).map((p) => [p.date, p.bps]));
+    const igS = seriesFor(ig.data, days, weekly);
+    const hyMap = new Map(seriesFor(hy.data, days, weekly).map((p) => [p.date, p.bps]));
     const base = { ig: igS[0]?.bps, hy: hyMap.get(igS[0]?.date) };
     if (!base.ig || !base.hy) return [];
     const out = [];
@@ -170,12 +210,13 @@ function CompareChart({ hist, days }) {
       });
     }
     return out;
-  }, [hist, days]);
+  }, [hist, days, weekly]);
 
   if (!data.length) return null;
   const allVals = data.flatMap((p) => [p.ig, p.hy]).concat([100]);
   const yAxis = niceAxis(Math.min(...allVals), Math.max(...allVals));
-  const xTicks = monthTicks(data);
+  const xTicks = dayAxis ? dayTicks(data) : monthTicks(data);
+  const xFmt = dayAxis ? fmtDayMonth : fmtMonth;
 
   return (
     <div className="border border-border rounded-md p-3">
@@ -193,7 +234,7 @@ function CompareChart({ hist, days }) {
         <ResponsiveContainer width="100%" height={CHART_H}>
           <LineChart data={data} margin={{ top: 8, right: 14, left: 4, bottom: 0 }}>
             <CartesianGrid strokeDasharray="2 2" stroke="#FFFFFF" strokeOpacity={0.15} />
-            <XAxis dataKey="date" ticks={xTicks} interval={0} tick={{ fill: "#94A3B8", fontSize: 9, fontFamily: "'Source Code Pro',monospace" }} tickLine={false} axisLine={{ stroke: "#1E2D40" }} tickFormatter={fmtMonth} />
+            <XAxis dataKey="date" ticks={xTicks} interval={0} tick={{ fill: "#94A3B8", fontSize: 9, fontFamily: "'Source Code Pro',monospace" }} tickLine={false} axisLine={{ stroke: "#1E2D40" }} tickFormatter={xFmt} />
             <YAxis domain={yAxis.domain} ticks={yAxis.ticks} tick={{ fill: "#94A3B8", fontSize: 9, fontFamily: "'Source Code Pro',monospace" }} tickLine={false} axisLine={false} width={38} />
             <ReferenceLine y={100} stroke="#FFFFFF" strokeOpacity={0.25} strokeDasharray="4 4" />
             <Tooltip content={<CompareTooltip />} cursor={{ stroke: "#5B8DEF", strokeOpacity: 0.3 }} />
@@ -227,6 +268,8 @@ export default function CreditSpreads() {
   }, []);
 
   const days = PERIODS.find((p) => p.key === period)?.days ?? 365;
+  const weekly = WEEKLY_PERIODS.has(period);
+  const dayAxis = period === "1M";
   const ordered = hist ? CHART_ORDER.map((id) => hist.find((c) => c.id === id)).filter(Boolean) : [];
 
   return (
@@ -262,9 +305,9 @@ export default function CreditSpreads() {
         <>
           <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
             {ordered.map((cat) => (
-              <SpreadChart key={cat.id} cat={cat} days={days} periodLabel={period} />
+              <SpreadChart key={cat.id} cat={cat} days={days} periodLabel={period} weekly={weekly} dayAxis={dayAxis} />
             ))}
-            <CompareChart hist={hist} days={days} />
+            <CompareChart hist={hist} days={days} weekly={weekly} dayAxis={dayAxis} />
           </div>
           <div className="text-[10px] text-text-dim mt-3 leading-relaxed">
             Spreads OAS vía ICE BofA Indices (FRED). Historia ICE BofA limitada a ~3 años por licencia de FRED.

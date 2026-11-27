@@ -64,10 +64,14 @@ export async function GET() {
       return d && (!min || d < min) ? d : min;
     }, null);
 
+    // ICE: daily (bps). Client uses daily for 1M/3M/6M and downsamples to weekly for 1A/3A.
     const categories = ICE.map((c, i) => ({
       id: c.id,
       name: c.name,
-      data: weekly(iceRaw[i], (r) => +(r.value * 100).toFixed(1)),
+      data: iceRaw[i]
+        .map((r) => ({ date: r.date, bps: +(r.value * 100).toFixed(1) }))
+        .filter((p) => p.bps != null)
+        .sort((a, b) => (a.date < b.date ? -1 : 1)),
     }));
 
     // Mortgage proxy: MORTGAGE30US (weekly) − DGS10 (daily, nearest on/before), capped to the ICE window.
