@@ -34,6 +34,16 @@ const DD_WINDOWS = ["1A", "3A", "5A", "10A", "Máx"];
 function presetTickers(key) {
   return LAB_PRESETS.find((p) => p.key === key)?.tickers || [];
 }
+
+const CUSTOM_KEY = "lab_custom_tickers";
+const TICKER_RE = /^[A-Z0-9.^-]{1,12}$/;
+function loadCustom() {
+  try { return JSON.parse(localStorage.getItem(CUSTOM_KEY) || "[]").filter((t) => TICKER_RE.test(t)); }
+  catch { return []; }
+}
+function saveCustom(list) {
+  try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(list)); } catch {}
+}
 function fmtPct(v, dec = 1) {
   if (v == null || !isFinite(v)) return "-";
   return (v > 0 ? "+" : "") + (v * 100).toFixed(dec).replace(".", ",") + "%";
@@ -66,6 +76,12 @@ export default function Laboratorio() {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const boxRef = useRef(null);
+  const [meta, setMeta] = useState({});       // ticker -> { adjusted }
+  const [names, setNames] = useState({});      // ticker -> display name
+  const [failed, setFailed] = useState(new Set()); // tickers with no data
+  const [customInput, setCustomInput] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState("");
 
   // correlation controls
   const [corrWin, setCorrWin] = useState("3A");
@@ -79,17 +95,34 @@ export default function Laboratorio() {
   const [hidden, setHidden] = useState(new Set());
   const [worstTicker, setWorstTicker] = useState(null);
 
+  // restore custom (off-universe) tickers from localStorage on mount
+  useEffect(() => {
+    const custom = loadCustom();
+    if (custom.length) {
+      setSelected((s) => {
+        const merged = [...s];
+        for (const t of custom) if (!merged.includes(t) && merged.length < MAX_ASSETS) merged.push(t);
+        return merged;
+      });
+    }
+  }, []);
+
   // fetch missing series whenever selection grows
   useEffect(() => {
-    const missing = selected.filter((t) => !seriesMap[t]);
+    const missing = selected.filter((t) => !seriesMap[t] && !failed.has(t));
     if (!missing.length) return;
     setLoading(true);
     setError(false);
-    fetch(`/api/lab-history?tickers=${missing.join(",")}&years=10`)
+    fetch(`/api/lab-history?tickers=${missing.map(encodeURIComponent).join(",")}&years=10`)
       .then((r) => r.json())
       .then((d) => {
         if (d?.series) {
           setSeriesMap((prev) => ({ ...prev, ...d.series }));
+          if (d.meta) setMeta((prev) => ({ ...prev, ...d.meta }));
+          if (d.names) setNames((prev) => ({ ...prev, ...d.names }));
+          if (Array.isArray(d.failed) && d.failed.length) {
+            setFailed((prev) => new Set([...prev, ...d.failed]));
+          }
           if (d.lastDate) setLastDate(d.lastDate);
         } else setError(true);
       })
@@ -102,12 +135,12 @@ export default function Laboratorio() {
     if (!ROLL_WINDOWS[freq].includes(rollWin)) setRollWin(ROLL_DEFAULT[freq]);
   }, [freq]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // keep pair selectors within the selection
+  // keep pair selectors within the active (data-bearing) set
   useEffect(() => {
-    if (!selected.includes(pairA)) setPairA(selected[0] || "");
-    if (!selected.includes(pairB)) setPairB(selected[1] || selected[0] || "");
-    if (worstTicker && !selected.includes(worstTicker)) setWorstTicker(selected[0] || null);
-  }, [selected]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!active.includes(pairA)) setPairA(active[0] || "");
+    if (!active.includes(pairB)) setPairB(active[1] || active[0] || "");
+    if (worstTicker && !active.includes(worstTicker)) setWorstTicker(active[0] || null);
+  }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const onClick = (e) => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); };
@@ -115,15 +148,54 @@ export default function Laboratorio() {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  const ready = selected.every((t) => seriesMap[t]);
+  // tickers that actually have data and drive the calculations
+  const active = useMemo(() => selected.filter((t) => seriesMap[t]), [selected, seriesMap]);
+  const ready = selected.filter((t) => !failed.has(t)).every((t) => seriesMap[t]) && active.length > 0;
+  const nameOf = (t) => names[t] || labName(t);
 
   const addTicker = (t) => {
     if (!isLabTicker(t) || selected.includes(t) || selected.length >= MAX_ASSETS) return;
     setSelected((s) => [...s, t]);
     setSearch("");
   };
-  const removeTicker = (t) => setSelected((s) => s.filter((x) => x !== t));
+  const removeTicker = (t) => {
+    setSelected((s) => s.filter((x) => x !== t));
+    if (!isLabTicker(t)) saveCustom(loadCustom().filter((x) => x !== t));
+    setFailed((prev) => { const n = new Set(prev); n.delete(t); return n; });
+  };
   const applyPreset = (key) => { setSelected(presetTickers(key)); setHidden(new Set()); };
+
+  // "Agregar ticker" — validate against the endpoint before adding a chip
+  const addCustom = async () => {
+    const t = customInput.trim().toUpperCase();
+    if (!t) return;
+    if (!TICKER_RE.test(t)) { setAddError("Formato inválido (A-Z, 0-9, . ^ -, máx 12)."); return; }
+    if (selected.includes(t)) { setCustomInput(""); setAddError(""); return; }
+    if (selected.length >= MAX_ASSETS) { setAddError(`Máximo ${MAX_ASSETS} activos.`); return; }
+    setAdding(true); setAddError("");
+    try {
+      const r = await fetch(`/api/lab-history?tickers=${encodeURIComponent(t)}&years=10`);
+      if (r.status === 429) {
+        const d = await r.json().catch(() => ({}));
+        setAddError(d.message || "Límite de tickers nuevos, probá más tarde.");
+      } else {
+        const d = await r.json();
+        if (d?.series?.[t]?.length) {
+          setSeriesMap((p) => ({ ...p, [t]: d.series[t] }));
+          if (d.meta) setMeta((p) => ({ ...p, ...d.meta }));
+          if (d.names) setNames((p) => ({ ...p, ...d.names }));
+          setSelected((s) => (s.includes(t) ? s : [...s, t]));
+          if (!isLabTicker(t)) { const c = loadCustom(); if (!c.includes(t)) saveCustom([...c, t]); }
+          setCustomInput("");
+        } else {
+          setAddError(`Sin datos para ${t} (puede no estar cubierto por el plan de datos).`);
+        }
+      }
+    } catch {
+      setAddError("No se pudo validar el ticker.");
+    }
+    setAdding(false);
+  };
 
   const filteredGroups = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -138,25 +210,25 @@ export default function Laboratorio() {
 
   // ---- correlation data ----
   const aligned = useMemo(
-    () => (ready && selected.length ? buildAligned(seriesMap, selected, freq, corrWin) : null),
-    [ready, seriesMap, selected, freq, corrWin]
+    () => (active.length ? buildAligned(seriesMap, active, freq, corrWin) : null),
+    [active, seriesMap, freq, corrWin]
   );
   const matrix = useMemo(() => (aligned ? correlationMatrix(aligned) : null), [aligned]);
   const rolling = useMemo(
-    () => (ready && pairA && pairB && seriesMap[pairA] && seriesMap[pairB]
+    () => (pairA && pairB && seriesMap[pairA] && seriesMap[pairB]
       ? rollingCorrelation(seriesMap, pairA, pairB, freq, corrWin, rollWin)
       : null),
-    [ready, seriesMap, pairA, pairB, freq, corrWin, rollWin]
+    [seriesMap, pairA, pairB, freq, corrWin, rollWin]
   );
 
   // ---- drawdown data (daily) ----
   const ddAssets = useMemo(() => {
-    if (!ready) return [];
-    return selected.map((t) => {
+    if (!active.length) return [];
+    return active.map((t) => {
       const w = windowSeries(seriesMap[t], "D", ddWin);
-      return { ticker: t, name: labName(t), series: w, dd: drawdownSeries(w), metrics: drawdownMetrics(w, "D") };
+      return { ticker: t, name: nameOf(t), series: w, dd: drawdownSeries(w), metrics: drawdownMetrics(w, "D") };
     });
-  }, [ready, seriesMap, selected, ddWin]);
+  }, [active, seriesMap, ddWin, names]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const underwaterData = useMemo(() => {
     if (!ddAssets.length) return [];
@@ -174,10 +246,10 @@ export default function Laboratorio() {
   const visibleDD = ddAssets.filter((a) => !hidden.has(a.ticker)).slice(0, 6);
   const singleDD = visibleDD.length === 1;
   const worst = useMemo(() => {
-    const t = worstTicker || selected[0];
+    const t = worstTicker || active[0];
     const a = ddAssets.find((x) => x.ticker === t);
-    return a ? { ticker: t, name: labName(t), episodes: worstEpisodes(a.series, 5) } : null;
-  }, [worstTicker, selected, ddAssets]);
+    return a ? { ticker: t, name: nameOf(t), episodes: worstEpisodes(a.series, 5) } : null;
+  }, [worstTicker, active, ddAssets]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="px-6 py-5">
@@ -210,13 +282,23 @@ export default function Laboratorio() {
         </div>
         <div ref={boxRef} className="relative" style={{ maxWidth: 560 }}>
           <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-md border border-border bg-card">
-            {selected.map((t) => (
-              <span key={t} className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white/10 text-[13px] text-white">
-                <span className="font-semibold">{t}</span>
-                <span className="text-text-sec">{labName(t)}</span>
-                <button onClick={() => removeTicker(t)} className="text-text-sec hover:text-white ml-0.5">×</button>
-              </span>
-            ))}
+            {selected.map((t) => {
+              const noData = failed.has(t);
+              const unadj = meta[t] && meta[t].adjusted === false;
+              return (
+                <span key={t} className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white/10 text-[13px] text-white">
+                  <span className="font-semibold">{t}</span>
+                  {!noData && <span className="text-text-sec">{nameOf(t)}</span>}
+                  {unadj && (
+                    <span title="Serie sin ajuste por dividendos; no comparable en retorno total con los demás." className="px-1 rounded text-[10px] font-bold" style={{ background: "rgba(248,161,30,.2)", color: AMBER }}>SIN AJUSTE</span>
+                  )}
+                  {noData && (
+                    <span className="px-1 rounded text-[10px] font-bold" style={{ background: "rgba(255,67,61,.18)", color: NEG_C }}>Sin datos</span>
+                  )}
+                  <button onClick={() => removeTicker(t)} className="text-text-sec hover:text-white ml-0.5">×</button>
+                </span>
+              );
+            })}
             {selected.length < MAX_ASSETS && (
               <input
                 value={search}
@@ -228,6 +310,22 @@ export default function Laboratorio() {
             )}
           </div>
           <div className="text-[12px] text-text-dim mt-1">{selected.length}/{MAX_ASSETS} activos</div>
+
+          {/* add free ticker */}
+          <div className="flex items-center gap-2 mt-2">
+            <input
+              value={customInput}
+              onChange={(e) => { setCustomInput(e.target.value); if (addError) setAddError(""); }}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustom(); } }}
+              placeholder="Agregar ticker (ej. NVDA, ^GSPC) — Enter"
+              disabled={adding || selected.length >= MAX_ASSETS}
+              className="min-w-[220px] bg-card border border-border rounded px-2 py-1.5 text-[13px] text-white placeholder:text-text-dim outline-none focus:border-accent"
+            />
+            <button onClick={addCustom} disabled={adding || selected.length >= MAX_ASSETS} className={btn(false)} style={{ background: "#0d0d1a" }}>
+              {adding ? "Validando…" : "Agregar"}
+            </button>
+          </div>
+          {addError && <div className="text-[12px] mt-1" style={{ color: NEG_C }}>{addError}</div>}
           {open && filteredGroups.length > 0 && (
             <div className="absolute z-20 mt-1 w-full max-h-72 overflow-auto rounded-md border border-border bg-card shadow-xl">
               {filteredGroups.map((g) => (
@@ -251,12 +349,12 @@ export default function Laboratorio() {
       {loading && !ready && <div className="text-sm text-text-sec h-40 flex items-center justify-center">Cargando series…</div>}
       {error && <div className="text-sm text-neg h-10 flex items-center">No se pudieron cargar algunas series.</div>}
 
-      {ready && selected.length > 0 && view === "corr" && (
-        <CorrView {...{ aligned, matrix, rolling, corrWin, setCorrWin, freq, setFreq, rollWin, setRollWin, pairA, setPairA, pairB, setPairB, selected }} />
+      {ready && view === "corr" && (
+        <CorrView {...{ aligned, matrix, rolling, corrWin, setCorrWin, freq, setFreq, rollWin, setRollWin, pairA, setPairA, pairB, setPairB, selected: active, nameOf }} />
       )}
 
-      {ready && selected.length > 0 && view === "dd" && (
-        <DdView {...{ ddAssets, underwaterData, visibleDD, singleDD, hidden, setHidden, ddWin, setDdWin, worst, worstTicker, setWorstTicker, selected }} />
+      {ready && view === "dd" && (
+        <DdView {...{ ddAssets, underwaterData, visibleDD, singleDD, hidden, setHidden, ddWin, setDdWin, worst, worstTicker, setWorstTicker, selected: active, nameOf }} />
       )}
 
       <div className="text-[12px] text-text-dim mt-6 leading-relaxed border-t border-border pt-3">
@@ -267,7 +365,7 @@ export default function Laboratorio() {
 }
 
 // ======================= Correlations view =======================
-function CorrView({ aligned, matrix, rolling, corrWin, setCorrWin, freq, setFreq, rollWin, setRollWin, pairA, setPairA, pairB, setPairB, selected }) {
+function CorrView({ aligned, matrix, rolling, corrWin, setCorrWin, freq, setFreq, rollWin, setRollWin, pairA, setPairA, pairB, setPairB, selected, nameOf }) {
   const tickers = aligned?.tickers || [];
   const freqLabel = FREQS.find((f) => f.key === freq)?.label;
   return (
@@ -289,7 +387,7 @@ function CorrView({ aligned, matrix, rolling, corrWin, setCorrWin, freq, setFreq
 
       {aligned && (
         <div className="text-[13px] text-text-sec mb-1">
-          Datos comunes: desde <span className="text-white font-semibold">{fmtDate(aligned.firstDate)}</span>, n=<span className="text-white font-semibold">{aligned.n}</span> observaciones ({freqLabel.toLowerCase()}) · limitado por <span className="text-white font-semibold">{labName(aligned.limitedBy)}</span>
+          Datos comunes: desde <span className="text-white font-semibold">{fmtDate(aligned.firstDate)}</span>, n=<span className="text-white font-semibold">{aligned.n}</span> observaciones ({freqLabel.toLowerCase()}) · limitado por <span className="text-white font-semibold">{nameOf(aligned.limitedBy)}</span>
         </div>
       )}
       {aligned && aligned.n < 30 && (
@@ -311,7 +409,7 @@ function CorrView({ aligned, matrix, rolling, corrWin, setCorrWin, freq, setFreq
             {tickers.map((rt, i) => (
               <tr key={rt}>
                 <td className="sticky left-0 bg-bg text-[14px] text-white whitespace-nowrap pr-3" style={{ minWidth: 120 }}>
-                  <span className="font-mono text-text-sec mr-1.5">{rt}</span>{labName(rt)}
+                  <span className="font-mono text-text-sec mr-1.5">{rt}</span>{nameOf(rt)}
                 </td>
                 {tickers.map((ct, j) => {
                   const v = matrix[i][j];
@@ -386,7 +484,7 @@ function PairSelect({ value, onChange, options, label }) {
 }
 
 // ======================= Drawdowns view =======================
-function DdView({ ddAssets, underwaterData, visibleDD, singleDD, hidden, setHidden, ddWin, setDdWin, worst, worstTicker, setWorstTicker, selected }) {
+function DdView({ ddAssets, underwaterData, visibleDD, singleDD, hidden, setHidden, ddWin, setDdWin, worst, worstTicker, setWorstTicker, selected, nameOf }) {
   const colorOf = (ticker) => {
     const idx = visibleDD.findIndex((a) => a.ticker === ticker);
     return idx >= 0 ? LINE_COLORS[idx % LINE_COLORS.length] : GRAY;
@@ -487,7 +585,7 @@ function DdView({ ddAssets, underwaterData, visibleDD, singleDD, hidden, setHidd
           <span className="text-[13px] font-bold text-accent uppercase tracking-wider">Peores caídas</span>
           <select value={worstTicker || selected[0]} onChange={(e) => setWorstTicker(e.target.value)}
             className="bg-card border border-border rounded px-2 py-1 text-[13px] text-white font-mono">
-            {selected.map((t) => <option key={t} value={t}>{t} · {labName(t)}</option>)}
+            {selected.map((t) => <option key={t} value={t}>{t} · {nameOf(t)}</option>)}
           </select>
         </div>
         {worst && worst.episodes.length ? (

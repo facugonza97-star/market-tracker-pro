@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
-import { getAdjHistory, pool } from "@/lib/priceHistory";
-import { isLabTicker, MAX_ASSETS } from "@/lib/labUniverse";
+import { getSeries, getProfileName, hasFresh, tryReserveNew, pool } from "@/lib/priceHistory";
+import { isLabTicker, labName, MAX_ASSETS } from "@/lib/labUniverse";
 
 export const dynamic = "force-dynamic";
+
+const TICKER_RE = /^[A-Z0-9.^-]{1,12}$/;
 
 function ymd(d) {
   return d.toISOString().split("T")[0];
@@ -15,31 +17,57 @@ export async function GET(request) {
   if (!Number.isFinite(years) || years < 1) years = 10;
   years = Math.min(years, 10);
 
+  // normalize to uppercase, accept universe tickers or anything matching the format
   const requested = raw
     ? raw.split(",").map((t) => t.trim().toUpperCase()).filter(Boolean)
     : [];
-  // Validate against the closed universe; reject anything else.
-  const valid = [...new Set(requested)].filter(isLabTicker).slice(0, MAX_ASSETS);
+  const valid = [...new Set(requested)]
+    .filter((t) => isLabTicker(t) || TICKER_RE.test(t))
+    .slice(0, MAX_ASSETS);
 
   if (!valid.length) {
     return NextResponse.json({ error: "no valid tickers", series: {} }, { status: 400 });
   }
 
+  // rate-limit off-universe ("new") tickers that need a fresh fetch
+  const newNeedFetch = valid.filter((t) => !isLabTicker(t) && !hasFresh(t));
+  if (newNeedFetch.length && !tryReserveNew(newNeedFetch)) {
+    return NextResponse.json(
+      { error: "rate_limit", message: "Límite de tickers nuevos, probá más tarde." },
+      { status: 429 }
+    );
+  }
+
   const from = ymd(new Date(Date.now() - years * 365 * 86400000));
 
   try {
-    const results = await pool(valid, 6, (t) => getAdjHistory(t, from));
+    const results = await pool(valid, 6, (t) => getSeries(t, from));
     const series = {};
+    const meta = {};
+    const failed = [];
     let lastDate = null;
-    valid.forEach((t, i) => {
-      const rows = results[i];
-      if (rows && rows.length) {
-        series[t] = rows; // [[date, adjClose], ...] ascending
-        const d = rows[rows.length - 1][0];
+
+    for (let i = 0; i < valid.length; i++) {
+      const t = valid[i];
+      const r = results[i];
+      if (r && r.rows && r.rows.length) {
+        series[t] = r.rows;
+        meta[t] = { adjusted: r.adjusted };
+        const d = r.rows[r.rows.length - 1][0];
         if (!lastDate || d > lastDate) lastDate = d;
+      } else {
+        failed.push(t);
       }
-    });
-    return NextResponse.json({ series, years, lastDate, updatedAt: new Date().toISOString() });
+    }
+
+    // names: universe uses its Spanish label; off-universe uses /profile
+    const names = {};
+    const offUniverse = valid.filter((t) => !isLabTicker(t) && series[t]);
+    const profNames = await pool(offUniverse, 4, (t) => getProfileName(t));
+    offUniverse.forEach((t, i) => { names[t] = profNames[i]; });
+    for (const t of valid) if (isLabTicker(t)) names[t] = labName(t);
+
+    return NextResponse.json({ series, meta, names, failed, years, lastDate, updatedAt: new Date().toISOString() });
   } catch (error) {
     console.error("lab-history API error:", error.message);
     return NextResponse.json({ error: "fetch failed", series: {} }, { status: 500 });
